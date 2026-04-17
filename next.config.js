@@ -55,6 +55,7 @@ const securityHeaders = [
 ]
 
 const output = 'export'
+const distDir = 'dist'
 const basePath = process.env.BASE_PATH || undefined
 const unoptimized = process.env.UNOPTIMIZED ? true : undefined
 
