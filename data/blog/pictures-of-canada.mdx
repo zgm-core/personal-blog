@@ -1,22 +1,22 @@
 ---
-title: O Canada
+title: 加拿大风光
 date: '2017-07-15'
-tags: ['holiday', 'canada', 'images']
+tags: ['旅行', '加拿大', '图片']
 draft: false
 layout: PostBanner
 images: ['/static/images/canada/mountains.jpg']
-summary: The scenic lands of Canada featuring maple leaves, snow-capped mountains, turquoise lakes and Toronto. Take in the sights in this photo gallery exhibition and see how easy it is to replicate with some MDX magic and tailwind classes.
+summary: 加拿大风景如画，有枫叶、雪山、碧绿湖泊和多伦多。在这个图片展览中欣赏美景，看看如何用 MDX 和 Tailwind CSS 轻松复制这种效果。
 ---
 
-The scenic lands of Canada featuring maple leaves, snow-capped mountains, turquoise lakes and Toronto. Take in the sights in this photo gallery exhibition and see how easy it is to replicate with some MDX magic and tailwind classes.
+加拿大风景如画，有枫叶、雪山、碧绿湖泊和多伦多。在这个图片展览中欣赏美景，看看如何用 MDX 和 Tailwind CSS 轻松复制这种效果。
 
-Features images served using `next/image` component. The locally stored images are located in a folder with the following path: `/static/images/canada/[filename].jpg`
+图片使用 `next/image` 组件加载。本地存储的图片位于以下路径：`/static/images/canada/[文件名].jpg`
 
-Since we are using mdx, we can create a simple responsive flexbox grid to display our images with a few tailwind css classes.
+由于使用的是 mdx，我们可以创建一个简单的响应式 flexbox 网格来展示图片，只需几个 tailwind css 类即可。
 
 ---
 
-# Gallery
+# 图片集
 
 <div className="-mx-2 flex flex-wrap overflow-hidden xl:-mx-2">
   <div className="my-1 w-full overflow-hidden px-2 xl:my-1 xl:w-1/2 xl:px-2">
@@ -33,7 +33,7 @@ Since we are using mdx, we can create a simple responsive flexbox grid to displa
   </div>
 </div>
 
-# Implementation
+# 实现代码
 
 ```js
 <div className="-mx-2 flex flex-wrap overflow-hidden xl:-mx-2">
@@ -52,31 +52,31 @@ Since we are using mdx, we can create a simple responsive flexbox grid to displa
 </div>
 ```
 
-With MDX v2, one can interleave markdown in jsx as shown in the example code.
+使用 MDX v2，可以在 jsx 中穿插 markdown，如示例代码所示。
 
-### Photo Credits
+### 图片来源
 
 <div>
-  Maple photo by [Guillaume
-  Jaillet](https://unsplash.com/@i_am_g?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText)
-  on
-  [Unsplash](https://unsplash.com/s/photos/canada?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText)
+  枫叶照片作者 [Guillaume
+  Jaillet](https://unsplash.com/@i_am_g?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
+  于
+  [Unsplash](https://unsplash.com/s/photos/canada?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
 </div>
 <div>
-  Mountains photo by [John
-  Lee](https://unsplash.com/@john_artifexfilms?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText)
-  on
-  [Unsplash](https://unsplash.com/s/photos/canada?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText)
+  雪山照片作者 [John
+  Lee](https://unsplash.com/@john_artifexfilms?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
+  于
+  [Unsplash](https://unsplash.com/s/photos/canada?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
 </div>
 <div>
-  Lake photo by [Tj
-  Holowaychuk](https://unsplash.com/@tjholowaychuk?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText)
-  on
-  [Unsplash](https://unsplash.com/s/photos/canada?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText)
+  湖泊照片作者 [Tj
+  Holowaychuk](https://unsplash.com/@tjholowaychuk?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
+  于
+  [Unsplash](https://unsplash.com/s/photos/canada?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
 </div>
 <div>
-  Toronto photo by [Matthew
-  Henry](https://unsplash.com/@matthewhenry?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText)
-  on
-  [Unsplash](https://unsplash.com/s/photos/canada?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText)
+  多伦多照片作者 [Matthew
+  Henry](https://unsplash.com/@matthewhenry?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
+  于
+  [Unsplash](https://unsplash.com/s/photos/canada?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
 </div>

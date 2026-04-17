@@ -1,137 +1,137 @@
 ---
-title: 'Markdown Guide'
+title: Markdown 使用指南
 date: '2019-10-11'
-tags: ['github', 'guide']
+tags: ['github', '教程']
 draft: false
-summary: 'Markdown cheatsheet for all your blogging needs - headers, lists, images, tables and more! An illustrated guide based on GitHub Flavored Markdown.'
+summary: 'Markdown 语法速查表 - 标题、列表、图片、表格等！基于 GitHub 风格的 Markdown 指南。'
 ---
 
-# Introduction
+# 简介
 
-Markdown and Mdx parsing is supported via `unified`, and other remark and rehype packages. `next-mdx-remote` allows us to parse `.mdx` and `.md` files in a more flexible manner without touching webpack.
+本博客支持 Markdown 和 Mdx 解析，通过 `unified` 及其他 remark 和 rehype 包实现。`next-mdx-remote` 允许我们更灵活地解析 `.mdx` 和 `.md` 文件，无需接触 webpack。
 
-GitHub flavored markdown is used. `mdx-prism` provides syntax highlighting capabilities for code blocks. Here's a demo of how everything looks.
+使用 GitHub 风格的 Markdown。`mdx-prism` 为代码块提供语法高亮功能。下面是各种语法的演示。
 
-The following markdown cheatsheet is adapted from: https://guides.github.com/features/mastering-markdown/
+以下 Markdown 语法速查表改编自：https://guides.github.com/features/mastering-markdown/
 
-# What is Markdown?
+# 什么是 Markdown？
 
-Markdown is a way to style text on the web. You control the display of the document; formatting words as bold or italic, adding images, and creating lists are just a few of the things we can do with Markdown. Mostly, Markdown is just regular text with a few non-alphabetic characters thrown in, like `#` or `*`.
+Markdown 是一种在网页上格式化文本的方式。你可以控制文档的显示效果；将文字加粗或斜体、添加图片、创建列表等，只需要几个非字母字符就能实现，比如 `#` 或 `*`。
 
-# Syntax guide
+# 语法指南
 
-Here’s an overview of Markdown syntax that you can use anywhere on GitHub.com or in your own text files.
+以下是可在 GitHub.com 或你自己的文本文件中使用的 Markdown 语法概览。
 
-## Headers
-
-```
-# This is a h1 tag
-
-## This is a h2 tag
-
-#### This is a h4 tag
-```
-
-# This is a h1 tag
-
-## This is a h2 tag
-
-#### This is a h4 tag
-
-## Emphasis
+## 标题
 
 ```
-_This text will be italic_
+# 这是一级标题
 
-**This text will be bold**
+## 这是二级标题
 
-_You **can** combine them_
+#### 这是四级标题
 ```
 
-_This text will be italic_
+# 这是一级标题
 
-**This text will be bold**
+## 这是二级标题
 
-_You **can** combine them_
+#### 这是四级标题
 
-## Lists
-
-### Unordered
+## 强调
 
 ```
-- Item 1
-- Item 2
-  - Item 2a
-  - Item 2b
+_这段文字会是斜体_
+
+**这段文字会是粗体**
+
+_你可以**组合**使用_
 ```
 
-- Item 1
-- Item 2
-  - Item 2a
-  - Item 2b
+_这段文字会是斜体_
 
-### Ordered
+**这段文字会是粗体**
+
+_你可以**组合**使用_
+
+## 列表
+
+### 无序列表
 
 ```
-1. Item 1
-1. Item 2
-1. Item 3
-   1. Item 3a
-   1. Item 3b
+- 项目 1
+- 项目 2
+  - 子项目 2a
+  - 子项目 2b
 ```
 
-1. Item 1
-1. Item 2
-1. Item 3
-   1. Item 3a
-   1. Item 3b
+- 项目 1
+- 项目 2
+  - 子项目 2a
+  - 子项目 2b
 
-## Images
+### 有序列表
+
+```
+1. 项目 1
+1. 项目 2
+1. 项目 3
+   1. 子项目 3a
+   1. 子项目 3b
+```
+
+1. 项目 1
+1. 项目 2
+1. 项目 3
+   1. 子项目 3a
+   1. 子项目 3b
+
+## 图片
 
 ```
 ![GitHub Logo](https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png)
-Format: ![Alt Text](url)
+格式：![替代文本](图片地址)
 ```
 
 ![GitHub Logo](https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png)
 
-## Links
+## 链接
 
 ```
-http://github.com - automatic!
+http://github.com - 自动转换！
 [GitHub](http://github.com)
 ```
 
-http://github.com - automatic!
+http://github.com - 自动转换！
 [GitHub](http://github.com)
 
-## Blockquotes
+## 引用块
 
 ```
-As Kanye West said:
+正如 Kanye West 所说：
 
-> We're living the future so
-> the present is our past.
+> 我们活在未来，
+> 所以现在就是我们的过去。
 ```
 
-As Kanye West said:
+正如 Kanye West 所说：
 
-> We're living the future so
-> the present is our past.
+> 我们活在未来，
+> 所以现在就是我们的过去。
 
-## Inline code
+## 行内代码
 
 ```
-I think you should use an
-`<addr>` element here instead.
+你应该在这里使用
+`<addr>` 元素。
 ```
 
-I think you should use an
-`<addr>` element here instead.
+你应该在这里使用
+`<addr>` 元素。
 
-## Syntax highlighting
+## 语法高亮
 
-Here’s an example of how you can use syntax highlighting with [GitHub Flavored Markdown](https://help.github.com/articles/basic-writing-and-formatting-syntax/):
+下面是使用 [GitHub 风格 Markdown](https://help.github.com/articles/basic-writing-and-formatting-syntax/) 实现语法高亮的示例：
 
 ````
 ```js:fancyAlert.js
@@ -143,7 +143,7 @@ function fancyAlert(arg) {
 ```
 ````
 
-And here's how it looks - nicely colored with styled code titles!
+代码显示效果 - 带样式的标题，颜色漂亮！
 
 ```js:fancyAlert.js
 function fancyAlert(arg) {
@@ -153,46 +153,46 @@ function fancyAlert(arg) {
 }
 ```
 
-## Footnotes
+## 脚注
 
 ```
-Here is a simple footnote[^1]. With some additional text after it.
+这是一个简单的脚注[^1]。后面还有一些额外的文字。
 
-[^1]: My reference.
+[^1]: 我的参考资料。
 ```
 
-Here is a simple footnote[^1]. With some additional text after it.
+这是一个简单的脚注[^1]。后面还有一些额外的文字。
 
-[^1]: My reference.
+[^1]: 我的参考资料。
 
-## Task Lists
-
-```
-- [x] list syntax required (any unordered or ordered list supported)
-- [x] this is a complete item
-- [ ] this is an incomplete item
-```
-
-- [x] list syntax required (any unordered or ordered list supported)
-- [x] this is a complete item
-- [ ] this is an incomplete item
-
-## Tables
-
-You can create tables by assembling a list of words and dividing them with hyphens `-` (for the first row), and then separating each column with a pipe `|`:
+## 任务列表
 
 ```
-| First Header                | Second Header                |
-| --------------------------- | ---------------------------- |
-| Content from cell 1         | Content from cell 2          |
-| Content in the first column | Content in the second column |
+- [x] 需要列表语法（支持无序或有序列表）
+- [x] 这是一个已完成的项目
+- [ ] 这是一个未完成的项目
 ```
 
-| First Header                | Second Header                |
-| --------------------------- | ---------------------------- |
-| Content from cell 1         | Content from cell 2          |
-| Content in the first column | Content in the second column |
+- [x] 需要列表语法（支持无序或有序列表）
+- [x] 这是一个已完成的项目
+- [ ] 这是一个未完成的项目
 
-## Strikethrough
+## 表格
 
-Any word wrapped with two tildes (like `~~this~~`) will appear ~~crossed out~~.
+你可以通过组合单词列表来创建表格，用连字符 `-` 分隔第一行，然后用竖线 `|` 分隔每个列：
+
+```
+| 第一个表头 | 第二个表头 |
+| --------- | --------- |
+| 单元格 1 的内容 | 单元格 2 的内容 |
+| 第一列的内容 | 第二列的内容 |
+```
+
+| 第一个表头      | 第二个表头      |
+| --------------- | --------------- |
+| 单元格 1 的内容 | 单元格 2 的内容 |
+| 第一列的内容    | 第二列的内容    |
+
+## 删除线
+
+任何用两个波浪号包裹的单词（如 `~~这样~~`）会显示为~~删除线效果~~。

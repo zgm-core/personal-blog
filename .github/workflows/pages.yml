@@ -1,5 +1,5 @@
-# Inspired from https://github.com/actions/starter-workflows/blob/main/pages/nextjs.yml
-name: GitHub Pages
+# GitHub Pages 部署工作流
+name: GitHub Pages 部署
 
 on:
   push:
@@ -23,33 +23,37 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: yarn
+          cache: pnpm
       - id: configurepages
         uses: actions/configure-pages@v5
-      - name: Restore cache
+      - name: 恢复缓存
         uses: actions/cache@v4
         with:
           path: .next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-
-      - run: yarn
-      - run: yarn build
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
+      - name: 安装依赖
+        run: corepack enable pnpm && pnpm install --frozen-lockfile
+      - name: 构建项目
+        run: pnpm build
         env:
           EXPORT: 1
           UNOPTIMIZED: 1
           BASE_PATH: ${{ steps.configurepages.outputs.base_path }}
-      - uses: actions/upload-pages-artifact@v3
+      - name: 上传构建产物
+        uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
 
-  # Deployment job
   deploy:
+    name: 部署到 GitHub Pages
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - id: deployment
+      - name: 部署页面
+        id: deployment
         uses: actions/deploy-pages@v4

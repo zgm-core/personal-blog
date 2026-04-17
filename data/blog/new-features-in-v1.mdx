@@ -1,29 +1,29 @@
 ---
-title: 'New features in v1'
+title: v1 新功能介绍
 date: 2021-08-07T15:32:14Z
 lastmod: '2021-02-01'
-tags: ['next-js', 'tailwind', 'guide']
+tags: ['next-js', 'tailwind', '教程']
 draft: false
-summary: 'An overview of the new features released in v1 - code block copy, multiple authors, frontmatter layout and more'
+summary: 'v1 新功能概述 - 代码块复制、多作者、frontmatter 布局等'
 layout: PostSimple
 bibliography: references-data.bib
 ---
 
-## Overview
+## 概述
 
-A post on the new features introduced in v1.0. New features:
+这是一篇关于 v1.0 新功能的文章。新功能包括：
 
-<TOCInline toc={props.toc} exclude="Overview" toHeading={2} />
+<TOCInline toc={props.toc} exclude="概述" toHeading={2} />
 
-First load JS decreased from 43kB to 39kB despite all the new features added! [^1]
+尽管添加了所有新功能，首屏 JS 从 43kB 减少到了 39kB！[^1]
 
-[^1]: With the new changes in Nextjs 12, first load JS increase to 45kB.
+[^1]: 随着 Next.js 12 的更新，首屏 JS 增加到了 45kB。
 
-See [upgrade guide](#upgrade-guide) below if you are migrating from v0 version of the template.
+如果你从 v0 版本迁移过来，请参阅下面的[升级指南](#升级指南)。
 
-## Theme colors
+## 主题颜色
 
-You can easily modify the theme color by changing the primary attribute in the tailwind config file:
+你可以通过修改 tailwind 配置文件的 primary 属性来轻松修改主题颜色：
 
 ```js:tailwind.config.js
 theme: {
@@ -36,59 +36,57 @@ theme: {
 }
 ```
 
-The primary color attribute should be assigned an object with keys from 50, 100, 200 ... 900 and the corresponding color code values.
+primary 颜色属性应该被赋值一个包含 50、100、200...900 键及其对应颜色代码值的对象。
 
-Tailwind includes great default color palettes that can be used for theming your own website. Check out [customizing colors documentation page](https://tailwindcss.com/docs/customizing-colors) for the full range of options.
+Tailwind 内置了出色的默认调色板，可用于为主题化你自己的网站。查看[自定义颜色文档页面](https://tailwindcss.com/docs/customizing-colors)了解完整的选项范围。
 
-Migrating from v1? You can revert to the previous theme by setting `primary` to `colors.sky` (Tailwind 2.2.2 and above, otherwise `colors.lightBlue`) and changing gray to `colors.gray`.
+从 v1 迁移？你可以通过将 `primary` 设置为 `colors.sky`（Tailwind 2.2.2 及以上版本，否则为 `colors.lightBlue`）并将 gray 改为 `colors.gray` 来恢复到之前的主题。
 
-From v1.1.2+, you can also customize the style of your code blocks easily by modifying the `css/prism.css` stylesheet. Token classnames are compatible with prismjs
-so you can copy and adapt token styles from a prismjs stylesheet e.g. [prism themes](https://github.com/PrismJS/prism-themes).
+从 v1.1.2+ 开始，你还可以通过修改 `css/prism.css` 样式表来轻松自定义代码块的样式。Token 类名与 prismjs 兼容，因此你可以复制并改编 prismjs 样式表中的 token 样式，如 [prism 主题](https://github.com/PrismJS/prism-themes)。
 
-## Xdm MDX compiler
+## Xdm MDX 编译器
 
-We switched the MDX bundler from [next-mdx-remote](https://github.com/hashicorp/next-mdx-remote) to [mdx-bundler](https://github.com/kentcdodds/mdx-bundler).
-This uses [xdm](https://github.com/wooorm/xdm) under the hood, the latest micromark 3 and remark, rehype libraries.
+我们将 MDX bundler 从 [next-mdx-remote](https://github.com/hashicorp/next-mdx-remote) 切换到了 [mdx-bundler](https://github.com/kentcdodds/mdx-bundler)。
+这在底层使用 [xdm](https://github.com/wooorm/xdm)，即最新的 micromark 3 和 remark、rehype 库。
 
-**Warning:** If you were using custom remark or rehype libraries, please upgrade to micromark 3 compatible ones. If you are upgrading, please delete `node_modules` and `package-lock.json` to avoid having past dependencies related issues.
+**警告：** 如果你正在使用自定义的 remark 或 rehype 库，请升级到与 micromark 3 兼容的版本。如果你正在升级，请删除 `node_modules` 和 `package-lock.json` 以避免过去依赖相关的问题。
 
-[xdm](https://github.com/wooorm/xdm) contains multiple improvements over [@mdx-js/mdx](https://github.com/mdx-js/mdx), the compiler used internally by next-mdx-remote, but there might be some breaking behaviour changes.
-Please check your markdown output to verify.
+[xdm](https://github.com/wooorm/xdm) 相比 [@mdx-js/mdx](https://github.com/mdx-js/mdx)（next-mdx-remote 内部使用的编译器）有许多改进，但可能会有一些破坏性行为变化。
+请检查你的 markdown 输出以验证。
 
-Some new possibilities include loading components directly in the mdx file using the import syntax and including js code which could be compiled and bundled at the build step.
+一些新的可能性包括直接在 mdx 文件中使用 import 语法加载组件，并包含可以在构建步骤中编译和打包的 js 代码。
 
-For example, the following jsx snippet can be used directly in an MDX file to render the page title component:
+例如，以下 jsx 代码片段可以直接在 MDX 文件中使用来渲染页面标题组件：
 
 ```jsx
-// Or import PageTitle from './components/PageTitle.js' if you are using js
+// 如果使用 js，可以 import PageTitle from './components/PageTitle.js'
 import PageTitle from './components/PageTitle.tsx'
-;<PageTitle> Using JSX components in MDX </PageTitle>
+;<PageTitle> 在 MDX 中使用 JSX 组件 </PageTitle>
 ```
 
-The default configuration resolves all components relative to the `components` directory.
+默认配置相对于 `components` 目录解析所有组件。
 
-**Note**:
-Components which require external image loaders also require additional esbuild configuration.
-Components which are dependent on global application state on lifecycle like the Nextjs `Link` component would also not work with this setup as each mdx file is built independently.
-For such cases, it is better to use component substitution.
+**注意**：
+需要外部图片加载器的组件也需要额外的 esbuild 配置。
+依赖于 Next.js `Link` 组件等全局应用状态生命周期的组件在这种设置下也无法工作，因为每个 mdx 文件都是独立构建的。
+对于这种情况，最好使用组件替换。
 
-## Table of contents component
+## 目录组件
 
-Inspired by [Docusaurus](https://docusaurus.io/docs/next/markdown-features/inline-toc) and Gatsby's [gatsby-remark-table-of-contents](https://www.gatsbyjs.com/plugins/gatsby-remark-table-of-contents/),
-the `toc` variable containing all the top level headings of the document is passed to the MDX file and can be styled accordingly.
-To make generating a table of contents (TOC) simple, you can use the existing `TOCInline` component.
+灵感来自 [Docusaurus](https://docusaurus.io/docs/next/markdown-features/inline-toc) 和 Gatsby 的 [gatsby-remark-table-of-contents](https://www.gatsbyjs.com/plugins/gatsby-remark-table-of-contents/)，
+包含文档所有顶级标题的 `toc` 变量会传递给 MDX 文件，可以相应地进行样式设置。
+为了简化目录（TOC）生成，你可以使用现有的 `TOCInline` 组件。
 
-For example, the TOC in this post was generated with the following code:
+例如，这篇文章的目录是用以下代码生成的：
 
 ```jsx
-<TOCInline toc={props.toc} exclude="Overview" toHeading={2} />
+<TOCInline toc={props.toc} exclude="概述" toHeading={2} />
 ```
 
-You can customise the headings that are displayed by configuring the `fromHeading` and `toHeading` props, or exclude particular headings
-by passing a string or a string array to the `exclude` prop. By default, all headings that are of depth 3 or smaller are indented. This can be configured by changing the `indentDepth` property.
-A `asDisclosure` prop can be used to render the TOC within an expandable disclosure element.
+你可以通过配置 `fromHeading` 和 `toHeading` props 来自定义显示的标题，或者通过向 `exclude` prop 传递字符串或字符串数组来排除特定标题。默认情况下，所有深度为 3 或更小的标题都会缩进。可以通过更改 `indentDepth` 属性来配置。
+`asDisclosure` prop 可用于在可展开的 disclosure 元素中渲染目录。
 
-Here's the full TOC rendered in a disclosure element.
+以下是目录在 disclosure 元素中的完整渲染：
 
 ```jsx
 <TOCInline toc={props.toc} asDisclosure />
@@ -96,354 +94,60 @@ Here's the full TOC rendered in a disclosure element.
 
 <TOCInline toc={props.toc} asDisclosure />
 
-## Layouts
+## 布局
 
-You can map mdx blog content to layout components by configuring the frontmatter field. For example, this post is written with the new `PostSimple` layout!
+你可以通过配置 frontmatter 字段将 mdx 博客内容映射到布局组件。例如，这篇文章就是用新的 `PostSimple` 布局编写的！
 
-### Adding new templates
+### 添加新模板
 
-layout templates are stored in the `./layouts` folder. You can add your React components that you want to map to markdown content in this folder.
-The component file name must match that specified in the markdown frontmatter `layout` field.
+布局模板存储在 `./layouts` 文件夹中。你可以在此文件夹中添加要映射到 markdown 内容的 React 组件。
+组件文件名必须与 markdown frontmatter `layout` 字段中指定的一致。
 
-The only required field is `children` which contains the rendered MDX content, though you would probably want to pass in the frontMatter contents and render it in the template.
+唯一必需的字段是包含渲染后的 MDX 内容的 `children`，不过你可能希望传入 frontMatter 内容并在模板中渲染它。
 
-You can configure the template to take in other fields - see `PostLayout` component for an example.
+你可以配置模板以接收其他字段 - 请参阅 `PostLayout` 组件作为示例。
 
-Here's an example layout which you can further customise:
+## 代码块复制按钮
 
-```jsx
-export default function ExampleLayout({ frontMatter, children }) {
-  const { date, title } = frontMatter
+将鼠标悬停在代码块上，你会看到一个 GitHub 风格的复制按钮！你可以修改 `./components/Pre.js` 进一步自定义它。
+该组件被传递给 `MDXComponents` 并修改所有 `<pre>` 块。
 
-  return (
-    <SectionContainer>
-      <div>{date}</div>
-      <h1>{title}</h1>
-      <div>{children}</div>
-    </SectionContainer>
-  )
-}
-```
+## 行高亮和行号
 
-### Configuring a blog post frontmatter
+感谢新的 [rehype-prism-plus 插件](https://github.com/timlrx/rehype-prism-plus)，现在支持行高亮和行号。
 
-Use the `layout` frontmatter field to specify the template you want to map the markdown post to. Here's how the frontmatter of this post looks like:
-
-```
----
-title: 'New features in v1'
-date: '2021-05-26   '
-tags: ['next-js', 'tailwind', 'guide']
-draft: false
-summary: 'Introducing the new layout features - you can map mdx blog content to layout components by configuring the frontmatter field'
-layout: PostSimple
----
-```
-
-You can configure the default layout in the respective page section by modifying the `DEFAULT_LAYOUT` variable.
-The `DEFAULT_LAYOUT` for blog posts page is set to `PostLayout`.
-
-### Extend
-
-`layout` is mapped to wrapper which wraps the entire MDX content.
-
-```jsx
-export const MDXComponents = {
-  Image,
-  a: CustomLink,
-  pre: Pre,
-  wrapper: ({ components, layout, ...rest }) => {
-    const Layout = require(`../layouts/${layout}`).default
-    return <Layout {...rest} />
-  },
-}
-
-export const MDXLayoutRenderer = ({ layout, mdxSource, ...rest }) => {
-  const MDXLayout = useMemo(() => getMDXComponent(mdxSource), [mdxSource])
-
-  return <MDXLayout layout={layout} components={MDXComponents} {...rest} />
-}
-```
-
-Use the `MDXLayoutRenderer` component on a page where you want to accept a layout name to map to the desired layout.
-You need to pass the layout name from the layout folder (it has to be an exact match).
-
-## Analytics
-
-The template now supports [plausible](https://plausible.io/), [simple analytics](https://simpleanalytics.com/) and google analytics.
-Configure `siteMetadata.js` with the settings that correspond with the desired analytics provider.
-
-```js
-analytics: {
-    // supports plausible, simpleAnalytics or googleAnalytics
-    plausibleDataDomain: '', // e.g. tailwind-nextjs-starter-blog.vercel.app
-    simpleAnalytics: false, // true or false
-    googleAnalyticsId: '', // e.g. UA-000000-2 or G-XXXXXXX
-  },
-```
-
-Custom events are also supported. You can import the `logEvent` function from `@components/analytics/[ANALYTICS-PROVIDER]` file and call it when
-triggering certain events of interest. _Note_: Additional configuration might be required depending on the analytics provider, please check their official
-documentation for more information.
-
-## Blog comments system
-
-We have also added support for [giscus](https://github.com/laymonage/giscus), [utterances](https://github.com/utterance/utterances) or disqus.
-To enable, simply configure `siteMetadata.js` comments property with the desired provider and settings as specified in the config file.
-
-```js
-comment: {
-    // Select a provider and use the environment variables associated to it
-    // https://vercel.com/docs/environment-variables
-    provider: 'giscus', // supported providers: giscus, utterances, disqus
-    giscusConfig: {
-      // Visit the link below, and follow the steps in the 'configuration' section
-      // https://giscus.app/
-      repo: process.env.NEXT_PUBLIC_GISCUS_REPO,
-      repositoryId: process.env.NEXT_PUBLIC_GISCUS_REPOSITORY_ID,
-      category: process.env.NEXT_PUBLIC_GISCUS_CATEGORY,
-      categoryId: process.env.NEXT_PUBLIC_GISCUS_CATEGORY_ID,
-      mapping: 'pathname', // supported options: pathname, url, title
-      reactions: '1', // Emoji reactions: 1 = enable / 0 = disable
-      // Send discussion metadata periodically to the parent window: 1 = enable / 0 = disable
-      metadata: '0',
-      // theme example: light, dark, dark_dimmed, dark_high_contrast
-      // transparent_dark, preferred_color_scheme, custom
-      theme: 'light',
-      // theme when dark mode
-      darkTheme: 'transparent_dark',
-      // If the theme option above is set to 'custom`
-      // please provide a link below to your custom theme css file.
-      // example: https://giscus.app/themes/custom_example.css
-      themeURL: '',
-    },
-    utterancesConfig: {
-      // Visit the link below, and follow the steps in the 'configuration' section
-      // https://utteranc.es/
-      repo: process.env.NEXT_PUBLIC_UTTERANCES_REPO,
-      issueTerm: '', // supported options: pathname, url, title
-      label: '', // label (optional): Comment 💬
-      // theme example: github-light, github-dark, preferred-color-scheme
-      // github-dark-orange, icy-dark, dark-blue, photon-dark, boxy-light
-      theme: '',
-      // theme when dark mode
-      darkTheme: '',
-    },
-    disqus: {
-      // https://help.disqus.com/en/articles/1717111-what-s-a-shortname
-      shortname: process.env.NEXT_PUBLIC_DISQUS_SHORTNAME,
-    },
-  },
-```
-
-## Multiple authors
-
-Information on authors is now split from `siteMetadata.js` and stored in its own `data/authors` folder as a markdown file. Minimally, you will need to have a `default.md` file with authorship information. You can create additional files as required and the file name will be used as the reference to the author.
-
-Here's how an author markdown file might look like:
-
-```md:default.md
----
-name: Tails Azimuth
-avatar: /static/images/avatar.png
-occupation: Professor of Atmospheric Science
-company: Stanford University
-email: address@yoursite.com
-twitter: https://twitter.com/Twitter
-linkedin: https://www.linkedin.com
-github: https://github.com
----
-
-A long description of yourself...
-```
-
-You can use this information in multiple places across the template. For example in the about section of the page, we grab the default author information with this line of code:
-
-```js
-const authorDetails = await getFileBySlug('authors', ['default'])
-```
-
-This is rendered in the `AuthorLayout` template.
-
-### Multiple authors in blog post
-
-The frontmatter of a blog post accepts an optional `authors` array field. If no field is specified, it is assumed that the default author is used. Simply pass in an array of authors to render multiple authors associated with a post.
-
-For example, the following frontmatter will display the authors given by `data/authors/default.md` and `data/authors/sparrowhawk.md`
-
-```yaml
-title: 'My first post'
-date: '2021-01-12'
-draft: false
-summary: 'My first post'
-authors: ['default', 'sparrowhawk']
-```
-
-A demo of a multiple authors post is shown in [Introducing Tailwind Nextjs Starter Blog post](/blog/introducing-tailwind-nextjs-starter-blog).
-
-## Copy button for code blocks
-
-Hover over a code block and you will notice a GitHub-inspired copy button! You can modify `./components/Pre.js` to further customise it.
-The component is passed to `MDXComponents` and modifies all `<pre>` blocks.
-
-## Line highlighting and line numbers
-
-Line highlighting and line numbers are now supported out of the box thanks to the new [rehype-prism-plus plugin](https://github.com/timlrx/rehype-prism-plus)
-
-The following javascript code block:
+以下 JavaScript 代码块：
 
 ````
 ```js {1, 3-4} showLineNumbers
 var num1, num2, sum
-num1 = prompt('Enter first number')
-num2 = prompt('Enter second number')
-sum = parseInt(num1) + parseInt(num2) // "+" means "add"
-alert('Sum = ' + sum) // "+" means combine into a string
+num1 = prompt('请输入第一个数字')
+num2 = prompt('请输入第二个数字')
+sum = parseInt(num1) + parseInt(num2) // "+" 表示相加
+alert('总和 = ' + sum) // "+" 表示拼接成字符串
 ```
 ````
 
-will appear as:
+显示效果：
 
 ```js {1,3-4} showLineNumbers
 var num1, num2, sum
-num1 = prompt('Enter first number')
-num2 = prompt('Enter second number')
-sum = parseInt(num1) + parseInt(num2) // "+" means "add"
-alert('Sum = ' + sum) // "+" means combine into a string
+num1 = prompt('请输入第一个数字')
+num2 = prompt('请输入第二个数字')
+sum = parseInt(num1) + parseInt(num2) // "+" 表示相加
+alert('总和 = ' + sum) // "+" 表示拼接成字符串
 ```
 
-To modify the styles, change the following class selectors in the `prism.css` file:
+## 多作者
 
-```css
-.code-highlight {
-  @apply float-left min-w-full;
-}
+作者信息现在从 `siteMetadata.js` 中分离出来，作为 markdown 文件存储在独立的 `data/authors` 文件夹中。至少，你需要有一个包含作者信息的 `default.md` 文件。你可以根据需要创建其他文件，文件名将用作对作者的引用。
 
-.code-line {
-  @apply -mx-4 block border-l-4 border-opacity-0 pl-4 pr-4;
-}
+## 通讯组件 (v1.1.3)
 
-.code-line.inserted {
-  @apply bg-green-500 bg-opacity-20;
-}
-
-.code-line.deleted {
-  @apply bg-red-500 bg-opacity-20;
-}
-
-.highlight-line {
-  @apply -mx-4 border-l-4 border-primary-500 bg-gray-700 bg-opacity-50;
-}
-
-.line-number::before {
-  @apply -ml-2 mr-4 inline-block w-4 text-right text-gray-400;
-  content: attr(line);
-}
-```
-
-## Newletter component (v1.1.3)
-
-Introduced in v1.1.3, the newsletter component gives you an easy way to build an audience. It integrates with the following providers:
+v1.1.3 中引入的通讯组件为你提供了一种轻松建立受众群体的简单方法。它与以下提供商集成：
 
 - [Mailchimp](https://mailchimp.com/)
 - [Buttondown](https://buttondown.email/)
 - [Convertkit](https://convertkit.com/)
 
-To use it, specify the provider which you are using in the config file and add the necessary environment variables to the `.env` file.
-For more information on the required variables, check out `.env.sample.`
-
-Two components are exported, a default `NewsletterForm` and a `BlogNewsletterForm` component, which is also passed in as an MDX component
-and can be used in a blog post:
-
-```jsx
-<BlogNewsletterForm title="Like what you are reading?" />
-```
-
-<BlogNewsletterForm title="Like what you are reading?" />
-
-The component relies on nextjs's [API routes](https://nextjs.org/docs/api-routes/introduction) which requires a server-side instance of nextjs to be setup
-and is not compatible with a 100% static site export. Users should either self-host or use a compatible platform like Vercel or Netlify which supports this functionality.
-
-A static site compatible alternative is to substitute the route in the newsletter component with a form API endpoint provider.
-
-## Bibliography and Citations (v1.2.1)
-
-`rehype-citation` plugin is added to the xdm processing pipeline in v1.2.1. This allows you to easily format citations and insert bibliography from an existing bibtex or CSL-json file.
-
-For example, the following markdown code sample:
-
-```md
-Standard citation [@Nash1950]
-In-text citations e.g. @Nash1951
-Multiple citations [see @Nash1950; @Nash1951, page 50]
-
-**References:**
-
-[^ref]
-```
-
-is rendered to the following:
-
-Standard citation [@Nash1950]  
-In-text citations e.g. @Nash1951  
-Multiple citations [see @Nash1950; @Nash1951, page 50]
-
-**References:**
-
-[^ref]
-
-A bibliography will be inserted at the end of the document, but this can be overwritten by specifying a `[^Ref]` tag at the intended location.
-The plugin uses APA citation formation, but also supports the following CSLs, 'apa', 'vancouver', 'harvard1', 'chicago', 'mla', or a path to a user-specified CSL file.
-
-See [rehype-citation readme](https://github.com/timlrx/rehype-citation) for more information on the configuration options.
-
-## Self-hosted font (v1.5.0)
-
-Google font has been replaced with self-hosted font from [Fontsource](https://fontsource.org/). This gives the following [advantages](https://fontsource.org/docs/introduction):
-
-> Self-hosting brings significant performance gains as loading fonts from hosted services, such as Google Fonts, lead to an extra (render blocking) network request. To provide perspective, for simple websites it has been seen to double visual load times.
->
-> Fonts remain version locked. Google often pushes updates to their fonts without notice, which may interfere with your live production projects. Manage your fonts like any other NPM dependency.
->
-> Commit to privacy. Google does track the usage of their fonts and for those who are extremely privacy concerned, self-hosting is an alternative.
-
-This leads to a smaller font bundle and a 0.1s faster load time ([webpagetest comparison](https://www.webpagetest.org/video/compare.php?tests=220201_AiDcFH_f68a69b758454dd52d8e67493fdef7da,220201_BiDcMC_bf2d53f14483814ba61e794311dfa771)).
-
-To change the default Inter font:
-
-1. Install the preferred [font](https://fontsource.org/fonts) - `npm install -save @fontsource/<font-name>`
-2. Update the import at `pages/_app.js`- `import '@fontsource/<font-name>.css'`
-3. Update the `fontfamily` property in the tailwind css config file
-
-## Upgrade guide
-
-There are significant portions of the code that has been changed from v0 to v1 including support for layouts and a new mdx engine.
-
-There's also no real reason to change if the previous one serves your needs and it might be easier to copy
-the component changes you are interested in to your existing blog rather than migrating everything over.
-
-Nonetheless, if you want to do so and have not changed much of the template, you could clone the new version and copy over the blog post over to the new template.
-
-Another alternative would be to pull the latest template version with the following code:
-
-```bash
-git remote add template git@github.com:timlrx/tailwind-nextjs-starter-blog.git
-git pull template v1 --allow-unrelated-histories
-rm -rf node_modules
-```
-
-You can see an example of such a migration in this [commit](https://github.com/timlrx/timlrx.com/commit/bba1c185384fd6d5cdaac15abf802fdcff027286) for my personal blog.
-
-v1 also uses `feed.xml` rather than `index.xml`, to avoid some build issues with Vercel. If you are migrating you should add a redirect to `next.config.js` like so:
-
-```js
-async redirects() {
-  return [
-    {
-      source: '/:path/index.xml',
-      destination: '/:path/feed.xml',
-      permanent: true,
-    }
-  ]
-}
-```
+要使用它，请在配置文件中指定你要使用的提供商，并将必要的环境变量添加到 `.env` 文件中。

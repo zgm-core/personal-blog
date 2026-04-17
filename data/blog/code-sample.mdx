@@ -1,37 +1,37 @@
 ---
-title: Sample .md file
+title: 示例 Markdown 文件
 date: '2016-03-08'
-tags: ['markdown', 'code', 'features']
+tags: ['markdown', '代码', '功能']
 draft: false
-summary: Example of a markdown file with code blocks and syntax highlighting
+summary: 带有代码块和语法高亮的 Markdown 文件示例
 ---
 
-A sample post with markdown.
+这是一个带有 Markdown 格式的示例文章。
 
-## Inline Highlighting
+## 行内代码高亮
 
-Sample of inline highlighting `sum = parseInt(num1) + parseInt(num2)`
+行内代码示例：`sum = parseInt(num1) + parseInt(num2)`
 
-## Code Blocks
+## 代码块
 
-Some Javascript code
+JavaScript 代码示例：
 
 ```javascript
 var num1, num2, sum
-num1 = prompt('Enter first number')
-num2 = prompt('Enter second number')
-sum = parseInt(num1) + parseInt(num2) // "+" means "add"
-alert('Sum = ' + sum) // "+" means combine into a string
+num1 = prompt('请输入第一个数字')
+num2 = prompt('请输入第二个数字')
+sum = parseInt(num1) + parseInt(num2) // "+" 表示相加
+alert('总和 = ' + sum) // "+" 表示拼接成字符串
 ```
 
-Some Python code 🐍
+Python 代码示例：
 
 ```python
 def fib():
     a, b = 0, 1
-    while True:            # First iteration:
-        yield a            # yield 0 to start with and then
-        a, b = b, a + b    # a will now be 1, and b will also be 1, (0 + 1)
+    while True:            # 第一次迭代：
+        yield a            # 先产出 0，然后
+        a, b = b, a + b    # a 变成 1，b 也变成 1 (0 + 1)
 
 for index, fibonacci_number in zip(range(10), fib()):
      print('{i:3}: {f:3}'.format(i=index, f=fibonacci_number))
