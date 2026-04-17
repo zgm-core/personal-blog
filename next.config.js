@@ -55,7 +55,6 @@ const securityHeaders = [
 ]
 
 const output = 'export'
-const distDir = 'dist'
 const basePath = process.env.BASE_PATH || undefined
 const unoptimized = process.env.UNOPTIMIZED ? true : undefined
 
@@ -66,6 +65,7 @@ module.exports = () => {
   const plugins = [withContentlayer, withBundleAnalyzer]
   return plugins.reduce((acc, next) => next(acc), {
     output,
+    distDir: 'dist',
     basePath,
     reactStrictMode: true,
     trailingSlash: false,
