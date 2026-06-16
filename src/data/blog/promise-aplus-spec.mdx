@@ -1,0 +1,170 @@
+---
+title: Promise A+ 规范翻译与解读
+date: '2026-06-16'
+tags: ['javascript', '前端']
+draft: false
+summary: Promise A+ 规范的详细翻译与通俗解读，帮助你深入理解 Promise 的 then 方法、状态变化以及任务完成处理流程。
+---
+
+一开始，我想的是把 Promise A+ 的规范原文翻译过来即可。可是认真的看了一下原文，发现有些内容直接翻译过来不是特别容易理解。因此，决定对规范进行核心部分的翻译，然后再对其进行解读。
+
+原版的规范参考：[Promises/A+](https://promisesaplus.com/)
+
+## 规范的产生背景
+
+该规范产生于2012年左右，它是 Promise A 规范的升级版。可以看出在出现时间上，Promise A+ 是早于 ES6 的。在那个时候，为了处理异步场景，JS中充斥着各种回调函数：
+
+```js
+// 以回调模式处理异步
+button.addEventListener('click', function (e) {
+  // 回调函数
+})
+
+setTimeout(function () {
+  // 回调函数
+}, 1000)
+```
+
+过去，回调函数也不是唯一的处理异步的方式，有些异步场景也可以把函数保存到对象的属性中，以便将来调用：
+
+```js
+// 保存函数的属性
+xhr.onreadystatechange = function () {}
+
+button.onclick = function () {}
+```
+
+可以看出，过去处理异步的方式是不统一的！在那个混乱的异步处理年代，Promise A+ 横空出世。它不是一个技术，而是一套规范。它希望所有的前端开发者都遵循这套规范，使得所有的开发者书写的异步代码达到统一。
+
+> 后来，ES6 在制作 Promise 标准时，就参考了该规范。
+
+## 规范翻译
+
+> 由于这一节是翻译的规范内容，比较抽象，如果看不懂可以直接跳到最后一节——解读
+
+一个 Promise 对象应该能够表达一个异步操作，异步操作无论成功还是失败，总会有一个结果，这个结果可以通过它的 `then` 方法来进行交互。具体的交互方式是，注册一个回调函数到 `then` 方法中。该规范详细的描述了 `then` 方法的具体规格。
+
+### PROMISE
+
+promise 用于表示一个异步任务，它应该是一个带有 `then` 方法的对象。它有三种状态：
+
+- **pending**：挂起，任务进行中
+- **fulfilled**：完成
+- **rejected**：失败
+
+任何时刻，promise 一定处于三种状态之一。
+
+> ES6 中的 Promise 完成状态是 resolved，单词不同，含义一样。
+
+1. 当 promise 处于 **pending** 状态时：它可以在任何合适的时候把状态转变为 fulfilled 或 rejected
+
+2. 当 promise 处于 **fulfilled** 状态时：
+   - 它无法再次更改到其他状态
+   - 它必须拥有一个值，表示任务完成时的数据，该数据可以是任何 JS 数据（甚至是 undefined），并且这个值一旦确定下来，不可更改
+
+3. 当 promise 处于 **rejected** 状态时：
+   - 它无法再次更改到其他状态
+   - 它必须拥有一个值，表示任务失败的原因，该值可以是任何 JS 数据（甚至是 undefined），并且这个值一旦确定下来，不可更改
+
+### THEN 方法
+
+promise 应该提供一个 `then` 方法，通过这个方法，我们可以访问到任务完成的值或任务失败的原因。`then` 方法可以接收两个参数：
+
+```js
+promise.then(onFulfilled, onRejected)
+```
+
+1. `onFulfilled` 和 `onRejected` 都是可选参数：
+   - 如果 `onFulfilled` 不是一个函数，它必须被忽略
+   - 如果 `onRejected` 不是一个函数，它必须被忽略
+
+2. 如果 `onFulfilled` 是一个函数：
+   - 它应该在 promise 到达 fulfilled 状态时被调用，调用该函数时，应该把任务完成时的值作为第一个参数传递进去
+   - 该函数只能被调用一次
+
+3. 如果 `onRejected` 是一个函数：
+   - 它应该在 promise 到达 rejected 状态时被调用，调用该函数时，应该把任务失败的原因作为第一个参数传递进去
+   - 该函数只能被调用一次
+
+4. `onFulfilled` 和 `onRejected` 必须要等到当前执行栈清空后才能被调用，换句话说，它们是异步执行的
+
+5. 可以多次对同一个 promise 调用 `then` 方法，从而注册多个 `onFulfilled` 或 `onRejected`。当任务完成或任务失败时，将按照注册的顺序，依次调用注册的 `onFulfilled` 或 `onRejected`
+
+6. `then` 方法必须再次返回一个 promise：
+
+```js
+promise2 = promise1.then(onFulfilled, onRejected)
+```
+
+- 在执行 `onFulfilled` 或 `onRejected` 时，如果执行的过程中报了一个错误，则会导致 `promise2` 进入 rejected 状态，并且和状态相关的失败原因就是抛出的错误
+- 在执行 `onFulfilled` 或 `onRejected` 时，如果执行的过程中没有发生错误，并且返回值是 `x`（x 可以是任何数据，包括 undefined），则会进入 **任务完成处理流程 `[[Resolve]](promise2, x)`**
+- 如果 `onFulfilled` 不是一个函数，同时 `promise1` 已经 fulfilled，`promise2` 也会自动变成 fulfilled，完成的相关数据和 `promise1` 一致
+- 如果 `onRejected` 不是一个函数，同时 `promise1` 已经 rejected，`promise2` 也会自动变成 rejected，失败的原因和 `promise1` 一致
+
+### 任务完成处理流程
+
+这个流程是一个概念上的操作规范，而不是真实的代码。Promise A+ 期望实现该规范的代码也要实现这个处理流程。为了便于说明，Promise A+ 把这个操作规范记作 `[[Resolve]](promise, x)`，它应该按照以下的流程进行：
+
+1. 如果 `promise` 和 `x` 是同一个对象，则把 `promise` 设置为 rejected 状态，失败原因是一个 TypeError
+
+2. 如果 `x` 是一个 promise：
+   - 如果 `x` 处于 pending，`promise` 也必须处于 pending，直到 `x` 完成或失败
+   - 如果 `x` 完成，`promise` 也会完成，数据和 `x` 完成的数据一致
+   - 如果 `x` 失败，`promise` 也会失败，原因和 `x` 失败原因一致
+
+3. 如果 `x` 是一个对象或函数：
+   - 读取 `x.then`，如果读取发生异常，则直接让 `promise` 失败，失败原因就是抛出的错误，然后结束处理即可
+   - 如果 `x.then` 是一个 function：
+     - 调用 `x.then(onFulfilled, onRejected)`
+     - 当 `onFulfilled` 执行时，如果得到的数据是 `y`，则执行 `[[Resolve]](promise, y)`
+     - 当 `onRejected` 执行时，如果得到的失败原因是 `error`，则让 `promise` 变成失败状态，原因是 `error`
+   - 如果 `x.then` 不是一个 function，把 `promise` 变成 fulfilled 状态，数据为 `x`
+   - 如果调用 `x.then` 的时候发生错误，则把 `promise` 变成失败状态，失败原因为抛出的错误
+
+4. 如果 `x` 不是一个对象或函数，把 `promise` 变成 fulfilled 状态，数据为 `x`
+
+## 解读
+
+> 如果你能读懂上一节的内容，这一部分对你来说就毫无意义
+
+### 1. ES6 的 Promise 和 Promise A+ 的关系
+
+ES6 的 Promise 遵循的是 Promise A+ 的规范，这也就意味着 ES6 的 Promise 完全可以和其他遵循了 Promise A+ 规范的 Promise 进行互操作。比如，ES6 的 Promise 可以和 JQuery 的 Promise 进行互操作：
+
+```js
+$.ajax(...).then(resp => {
+  // 这是 JQuery 的 Promise 的 then 函数
+  return new Promise(resolve => {
+    // 这是 ES6 的 Promise
+  })
+})
+```
+
+### 2. 关于 Promise 的 catch 函数
+
+Promise A+ 规范中并没有规定需要提供 `catch`，但 ES6 的 Promise 提供了这一函数，它是为了让开发者使用起来更加方便。这并不代表 ES6 的 Promise 打破了这一规范，因为绝大部分规范都是只规定了你至少有什么东西，并不关心你多了什么东西。
+
+### 3. Promise 必须通过构造函数 new Promise 得到吗？
+
+Promise A+ 没有这样规定，它可以通过任何途径得到，只不过 ES6 的 Promise 是通过构造函数得到的。Promise A+ 规范，要求 Promise 必须是一个对象或是一个函数，该对象或函数提供了满足要求的 `then` 方法即可。比如，下面的代码得到的都是满足规范的 Promise：
+
+```js
+const promise1 = {
+  then(onFulfilled, onRejected) {
+    // 满足规范的 then 函数
+  },
+}
+
+const promise2 = function (a, b) {
+  return a + b
+}
+promise2.then = function (onFulfilled, onRejected) {
+  // 满足规范的 then 函数
+}
+```
+
+### 4. 关于 Promise 的状态
+
+Promise A+ 并没有要求 Promise 必须提供什么属性来得到状态，这些都是 Promise 的内部信息，你可以对外提供，也可以不提供。ES6 的 Promise 提供了两个属性 `[[PromiseStatus]]` 和 `[[PromiseValue]]`，分别表示 Promise 的状态和状态的相关数据（成功的数据或失败的原因），但这两个属性均无法在外部访问。
+
+另外，Promise A+ 也没有对状态的名称做出强制要求，在规范文档中，Promise A+ 使用了 pending、fulfilled、rejected，但这些名称仅仅是为了说明规范而产生的，在具体的实现中，你可以自行规定任何的名称来表示三种状态。ES6 的 Promise 就使用了 pending、resolved、rejected 来表示三种状态，这并没有打破 Promise A+ 规范。
