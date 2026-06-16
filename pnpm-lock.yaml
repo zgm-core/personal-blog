@@ -86,6 +86,9 @@ importers:
       rehype-katex:
         specifier: ^7.0.0
         version: 7.0.1
+      rehype-katex-notranslate:
+        specifier: ^1.1.4
+        version: 1.1.4
       rehype-preset-minify:
         specifier: ^7.0.0
         version: 7.0.1
@@ -3773,6 +3776,9 @@ packages:
 
   rehype-citation@2.3.2:
     resolution: {integrity: sha512-apeGbeIYrfbirZZMZ0KY9tEZPnMlqomlGbQDNJfMoTV8wBSmLq8XyBywlfHrPLvchFIq9Mrn7g7SmXdQob+5lw==}
+
+  rehype-katex-notranslate@1.1.4:
+    resolution: {integrity: sha512-zr2NMVDnTHAFyyVC14I00NDDlSwjvd//EWzIhazz6eNn34LeJQyFECaRBCVdqBIVA6KMvBooO26pfSZXjUG84Q==}
 
   rehype-katex@7.0.1:
     resolution: {integrity: sha512-OiM2wrZ/wuhKkigASodFoo8wimG3H12LWQaH8qSPVJn9apWKFSH3YOCtbKpBorTVw/eI7cuT21XBbvwEswbIOA==}
@@ -8787,6 +8793,11 @@ snapshots:
       unist-util-visit: 5.1.0
     transitivePeerDependencies:
       - encoding
+
+  rehype-katex-notranslate@1.1.4:
+    dependencies:
+      unified: 11.0.5
+      unist-util-visit: 5.1.0
 
   rehype-katex@7.0.1:
     dependencies:
