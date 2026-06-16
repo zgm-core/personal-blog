@@ -8,6 +8,7 @@ import CategoryNav from '@/components/CategoryNav'
 import PostCardStats from '@/components/PostCardStats'
 import ReadButton from '@/components/ReadButton'
 import tagData from '@/app/tag-data.json'
+import type { Blog } from 'contentlayer/generated'
 
 const MAX_DISPLAY = 6
 
@@ -20,12 +21,12 @@ const accentGradients = [
   'from-rose-400 to-pink-400',
 ]
 
-function matchPost(post: any, query: string) {
+function matchPost(post: Blog, query: string) {
   return (post.title || '').toLowerCase().includes(query.toLowerCase())
 }
 
 // 统计文章涉及的分类
-function countCategory(categoryName: string, posts: any[]): number {
+function countCategory(categoryName: string, posts: Blog[]): number {
   const categoryTags = categoryGroups.find((g) => g.name === categoryName)?.tags ?? []
   if (categoryTags.length === 0) return 0
   return posts.filter((p) => p.tags?.some((t: string) => categoryTags.includes(t))).length
@@ -38,12 +39,12 @@ const categoryGroups = [
   { name: '项目实战', icon: '🗺️', tags: ['Three.js', '项目实战', '数据可视化'] },
 ]
 
-export default function Home({ posts }) {
+export default function Home({ posts }: { posts: Blog[] }) {
   const [query, setQuery] = useState('')
 
   const filtered = useMemo(() => {
     if (!query.trim()) return posts
-    return posts.filter((p: any) => matchPost(p, query))
+    return posts.filter((p) => matchPost(p, query))
   }, [query, posts])
 
   const displayPosts = query.trim() ? filtered : filtered.slice(0, MAX_DISPLAY)
