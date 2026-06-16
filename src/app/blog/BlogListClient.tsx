@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { formatDate } from 'pliny/utils/formatDate'
+import { formatDate } from '@/utils/formatDate'
 import siteMetadata from '@/data/siteMetadata'
 import CategoryNav from '@/components/CategoryNav'
 import ReadButton from '@/components/ReadButton'

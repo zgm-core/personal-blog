@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
-import { formatDate } from 'pliny/utils/formatDate'
+import { formatDate } from '@/utils/formatDate'
 import type { Blog } from 'contentlayer/generated'
 import Link from 'next/link'
 import siteMetadata from '@/data/siteMetadata'

@@ -6,10 +6,6 @@ declare module 'pliny/utils/contentlayer' {
   export function sortPosts<T extends { date: string }>(posts: T[]): T[]
 }
 
-declare module 'pliny/utils/formatDate' {
-  export function formatDate(date: string | Date, locale?: string): string
-}
-
 declare module 'pliny/mdx-plugins/index.js' {
   export function remarkExtractFrontmatter(): any
   export function remarkCodeTitles(): any
