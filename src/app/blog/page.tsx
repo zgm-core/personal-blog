@@ -1,4 +1,4 @@
-import { allCoreContent, sortPosts } from 'pliny/utils/contentlayer'
+import { allCoreContent, sortPosts } from '@/utils/contentlayer'
 import { allBlogs } from 'contentlayer/generated'
 import { genPageMetadata } from '@/app/seo'
 import BlogListClient from './BlogListClient'

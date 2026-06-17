@@ -3,7 +3,7 @@ import 'katex/dist/katex.css'
 
 import { Suspense } from 'react'
 import MdxRenderer from '@/components/MdxRenderer'
-import { sortPosts, coreContent, allCoreContent } from 'pliny/utils/contentlayer'
+import { sortPosts, coreContent, allCoreContent } from '@/utils/contentlayer'
 import { allBlogs, allAuthors } from 'contentlayer/generated'
 import type { Authors, Blog } from 'contentlayer/generated'
 import PostSimple from '@/layouts/PostSimple'
