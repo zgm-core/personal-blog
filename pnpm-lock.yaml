@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@giscus/react':
+        specifier: ^3.1.0
+        version: 3.1.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@headlessui/react':
         specifier: ^2.2.10
         version: 2.2.10(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
