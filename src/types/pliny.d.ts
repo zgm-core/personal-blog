@@ -1,11 +1,5 @@
 import React from 'react'
 
-declare module 'pliny/utils/contentlayer' {
-  export function allCoreContent<T>(posts: T[]): T[]
-  export function coreContent<T>(post: T): Partial<T>
-  export function sortPosts<T extends { date: string }>(posts: T[]): T[]
-}
-
 declare module 'pliny/mdx-plugins/index.js' {
   export function remarkExtractFrontmatter(): any
   export function remarkCodeTitles(): any
