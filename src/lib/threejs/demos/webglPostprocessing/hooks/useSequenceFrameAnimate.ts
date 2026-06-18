@@ -46,7 +46,7 @@ export const useSequenceFrameAnimate=()=>{
     let r = 0; // 当前行
     let c = 0; // 当前列
     let t = 0; // 时间
-    mesh.updateSequenceFrame = (time:any) => {
+    const updateSequenceFrame = (time:any) => {
       t += options.speed;
       if (t > options.frame) t = 0;
       c = options.column - Math.floor(t % options.column) - 1;
@@ -55,7 +55,7 @@ export const useSequenceFrameAnimate=()=>{
       texture.offset.y = r / options.row; // 动态更新纹理偏移 播放关键帧动画
     };
 
-    return mesh;
+    return Object.assign(mesh, { updateSequenceFrame });
   };
 
   return {

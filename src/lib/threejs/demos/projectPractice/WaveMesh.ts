@@ -37,12 +37,13 @@ const mesh = new THREE.Mesh(geometry, material);
  */
 export const createWaveMesh = (R: number, lon: number, lat: number) => {
   //克隆平面模型并设置位置
-  const mesh1 = mesh.clone();
+  const mesh1 = Object.assign(mesh.clone(), {
+    size: R * 0.16,                       // 自定义属性：mesh静态大小
+    _s: Math.random() * 1.0 + 1.0,        // 自定义属性：光圈放大倍数 1~2倍
+  });
   const coord = lon2xyz(R * 1.001, lon, lat);
   mesh1.scale.set(R * 0.16, R * 0.16, R * 0.16);
   mesh1.position.set(coord.x, coord.y, coord.z);
-  mesh1.size = R * 0.16;//自顶一个属性，表示mesh静态大小
-  mesh1._s = Math.random()*1.0 + 1.0;//自定义属性._s表示mesh在原始大小基础上放大倍数  光圈在原来mesh.size基础上1~2倍之间变化
   // mesh姿态设置
   // mesh在球面上的法线方向(球心和球面坐标构成的方向向量)
   const coordVec3 = new THREE.Vector3(coord.x, coord.y, coord.z).normalize();

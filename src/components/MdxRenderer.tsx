@@ -1,12 +1,12 @@
 'use client'
 
+import type { ComponentType } from 'react'
 import { useMDXComponent } from 'next-contentlayer2/hooks'
-import type { MDXComponents } from 'mdx/types'
 import { components as defaultComponents } from './MDXComponents'
 
 interface MdxRendererProps {
   code: string
-  components?: MDXComponents
+  components?: Record<string, ComponentType<any>>
   toc?: unknown
 }
 

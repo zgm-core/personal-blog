@@ -72,7 +72,7 @@ class WireBorder {
     const vertices = new Float32Array(this.victorArr); //Float32Array 类型数组代表的是平台字节顺序为 32 位的浮点数型数组
     const dot = new THREE.BufferAttribute(vertices, 3); //每三个数字作为一个元组
     geometry.setAttribute("position", dot); //设置点在空间中的位置（换句话说，利用x,y,z三维空间里面确定一个点）
-    const material = new THREE.LineBasicMaterial({ color: 0xff0000,side: THREE.DoubleSide,wireframe:true  }); //确定点的材质和颜色
+    const material = new THREE.LineBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide }); //确定点的材质和颜色
     const mesh = new THREE.LineLoop(geometry, material); //创建网格模型
     return mesh;
   }

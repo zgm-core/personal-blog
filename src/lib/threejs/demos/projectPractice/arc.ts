@@ -106,7 +106,7 @@ function _3Dto2D(startSphereCoord:any,endSphereCoord:any){
  * @param endPoint XOY平面关于Y轴对称的终点
  * @returns  返回弧线模型
  */
-function arcXOY(startPoint:number, endPoint:number,R:number){
+function arcXOY(startPoint:any, endPoint:any, R:any){
 
 // 计算两个点的中点。.addVectors ( a : Vector3, b : Vector3 ) : this：将该向量设置为a + b。
 const middleV3=new THREE.Vector3().addVectors(startPoint,endPoint).multiplyScalar(0.5)
@@ -139,28 +139,25 @@ const endAngle = Math.PI - startAngle;//飞线圆弧结束角度
 
 
 // 调用函数生成飞线模型
-const arcline = circleLine(flyArcCenter.x, flyArcCenter.y, flyArcR, startAngle, endAngle)
-arcline.center = flyArcCenter;//飞线圆弧自定一个属性表示飞线圆弧的圆心  外接圆圆心
-arcline.topCoord = arcTopCoord;//飞线圆弧自定一个属性表示飞线圆弧中间也就是顶部坐标
+const arcline = Object.assign(
+  circleLine(flyArcCenter.x, flyArcCenter.y, flyArcR, startAngle, endAngle),
+  { center: flyArcCenter, topCoord: arcTopCoord }
+); // center: 飞线圆弧圆心, topCoord: 飞线圆弧顶部坐标
 
 // const flyAngle = (endAngle - startAngle)/ 7; //飞线圆弧的弧度和轨迹线弧度相关
 const flyAngle =0.32408463182013; //飞线圆弧的弧度和轨迹线弧度相关
 // console.log("嘎嘎嘎",flyAngle);
 
  // 绘制一段飞线，圆心做坐标原点
-const flyLine = createFlyLine(flyArcR, startAngle, startAngle + flyAngle);
+const flyLine = Object.assign(
+  createFlyLine(flyArcR, startAngle, startAngle + flyAngle),
+  { flyEndAngle: endAngle - startAngle - flyAngle, startAngle }
+);
 flyLine.position.y = flyArcCenter.y;//平移飞线圆弧和飞线轨迹圆弧重合
 //飞线段flyLine作为飞线轨迹arcLine子对象，继承飞线轨迹平移旋转等变换
 arcline.add(flyLine);
-
-//飞线段运动范围startAngle~flyEndAngle
-flyLine.flyEndAngle = endAngle - startAngle - flyAngle;
-flyLine.startAngle = startAngle;
-// arcline.flyEndAngle：飞线段当前角度位置，这里设置了一个随机值用于演示
-// flyLine.AngleZ = arcline.flyEndAngle * Math.random();
-// flyLine.rotation.z = arcline.AngleZ;
 // arcline.flyLine指向飞线段,便于设置动画是访问飞线段
-arcline.flyLine = flyLine;
+(arcline as any).flyLine = flyLine;
 
 return arcline
 }

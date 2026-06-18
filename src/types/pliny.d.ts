@@ -28,17 +28,3 @@ declare module 'pliny/analytics' {
   export function Analytics(props: { analyticsConfig: AnalyticsConfig }): JSX.Element
 }
 
-declare module 'pliny/mdx-components' {
-  import { MDXComponents } from 'mdx/types'
-  export function useMDXComponent(code: string, globals?: Record<string, unknown>): React.ComponentType<any>
-  export function MDXLayoutRenderer(props: {
-    code: string
-    components?: MDXComponents
-    [key: string]: unknown
-  }): JSX.Element
-}
-
-declare module 'pliny/newsletter' {
-  export function NewsletterAPI(config: { provider?: string }): (req: Request) => Promise<Response>
-}
-

@@ -8,12 +8,12 @@ import Delaunator from "delaunator";
  */
 export const triangulation = (
   arrPoints: number[][],
-  boundaryPoint: number[]
+  boundaryPoint: number[][]
 ) => {
     // console.log("看看参数",boundaryPoint);
     
   //.from(pointsArr).triangles：平面上一系列点集三角剖分，并获取三角形索引值
-  const indexArr: number[] = Delaunator.from(arrPoints).triangles; //indexArr三角形的顶点索引值
+  const indexArr: number[] = Array.from(Delaunator.from(arrPoints).triangles); //indexArr三角形的顶点索引值
     //  console.log("三角形的顶点索引值",indexArr);
 
   //定义一个数组接收满足要求的三角形索引
@@ -25,7 +25,7 @@ export const triangulation = (
     const p3: number[] = arrPoints[indexArr[i + 2]];
 
     //判断三角形在框线外还是在框线内,办法：得到三角形内部的一个点，判断他是在框线外还是在框线内即可，这里我们以三角形的重心为例
-    const coord: number[] = [
+    const coord: [number, number] = [
       (p1[0] + p2[0] + p3[0]) / 3,
       (p1[1] + p2[1] + p3[1]) / 3,
     ];
@@ -33,7 +33,7 @@ export const triangulation = (
 
 
 
-    if (pointInPolygon(coord, boundaryPoint)) {
+    if (pointInPolygon(coord, boundaryPoint as [number, number][])) {
       //有一点需要注意，一个三角形索引逆时针和顺时针顺序对应three.js三角形法线方向相反，或者说Mesh正面、背面方向不同
       usefulIndexArr.push(indexArr[i + 2], indexArr[i + 1], indexArr[i]);
     }

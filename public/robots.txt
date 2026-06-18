@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://zgm-core.github.io/personal-blog
+
+# Sitemaps
+Sitemap: https://zgm-core.github.io/personal-blog/sitemap.xml

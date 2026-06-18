@@ -31,7 +31,7 @@ export const useCountryLine = () => {
     //对材质的处理
     materialOpt = deepMerge(materialOpt, materialOptions);
     //创建材质
-    let material = new THREE.LineBasicMaterial(materialOpt);
+    let material: any = new THREE.LineBasicMaterial(materialOpt);
     //判断传过来的线类型
     if (lineType == "Line2") material = new LineMaterial(materialOpt);
 
@@ -43,7 +43,7 @@ export const useCountryLine = () => {
       // console.log("看看说什么",item);
       item["geometry"]["coordinates"][0].forEach((elm: any) => {
         // console.log("这是",elm);
-        const points: number[] = []; //保存每一个板块区域的点数据
+        const points: any[] = []; //保存每一个板块区域的点数据
 
         if (lineType == "Line2") {
           elm.forEach((e: any) => {
@@ -84,7 +84,7 @@ export const useCountryLine = () => {
    * @returns
    */
   const createLine = (
-    points: number[],
+    points: any[],
     material: any,
     lineType = "LineLoop"
   ) => {
@@ -101,9 +101,10 @@ export const useCountryLine = () => {
     } else {
       const geometry = new THREE.BufferGeometry();
       geometry.setFromPoints(points);
-      line = new THREE[lineType](geometry, material);
-      line.name = "countryLine";
-      line._meshName="model"
+      line = Object.assign(new (THREE as any)[lineType](geometry, material), {
+        name: "countryLine",
+        _meshName: "model",
+      });
     }
 
     return line;

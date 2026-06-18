@@ -24,7 +24,7 @@ export function sortPosts<T extends { date: string }>(allBlogs: T[], dateKey = '
 }
 
 export function coreContent<T extends Record<string, unknown>>(content: T): CoreContent<T> {
-  return omit(content, ['body', '_raw', '_id'] as (keyof T)[])
+  return omit(content, ['body', '_raw', '_id'] as (keyof T)[]) as CoreContent<T>
 }
 
 const isProduction = process.env.NODE_ENV === 'production'

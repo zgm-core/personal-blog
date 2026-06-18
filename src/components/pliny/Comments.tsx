@@ -1,11 +1,11 @@
 'use client'
 
-import Giscus from '@giscus/react'
+import Giscus, { type GiscusProps } from '@giscus/react'
 import type { Mapping, BooleanString, InputPosition, Theme } from '@giscus/react'
 
 interface GiscusConfig {
   repo: string
-  repositoryId: string
+  repoId: string
   category: string
   categoryId: string
   mapping: Mapping
@@ -28,5 +28,5 @@ interface CommentsProps {
 
 export default function Comments({ commentsConfig, slug: _slug }: CommentsProps) {
   if (commentsConfig.provider !== 'giscus') return null
-  return <Giscus {...commentsConfig.giscusConfig} />
+  return <Giscus {...commentsConfig.giscusConfig as GiscusProps} />
 }

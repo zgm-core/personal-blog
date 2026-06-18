@@ -29,16 +29,15 @@ export const createWaveMesh = (R: number, lon: number, lat: number) => {
     depthWrite: false, //禁止写入深度缓冲区数据
   });
 
-  // 创建几何模型
-  const mesh = new THREE.Mesh(plane, material);
-
   // 计算出球上坐标
   const coord = lon2xyz(R * 1.001, lon, lat);
 
   const size = R * 0.12; //矩形平面Mesh的尺寸
-  mesh.size = size; //自顶一个属性，表示mesh静态大小
+  const mesh = Object.assign(new THREE.Mesh(plane, material), {
+    size,                               // 自定义属性：mesh静态大小
+    _s: Math.random() * 1.0 + 1.0,     // 自定义属性：光圈放大倍数 1~2倍
+  });
   mesh.scale.set(size, size, size); //设置mesh大小
-  mesh._s = Math.random() * 1.0 + 1.0; //自定义属性._s表示mesh在原始大小基础上放大倍数  光圈在原来mesh.size基础上1~2倍之间变化
 //   mesh.scale.set(mesh.size * mesh._s, mesh.size * mesh._s, mesh.size * mesh._s);
   // 设置几何模型在球面上的位置
   mesh.position.set(coord.x, coord.y, coord.z);

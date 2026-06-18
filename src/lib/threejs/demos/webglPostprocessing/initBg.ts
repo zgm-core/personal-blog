@@ -12,11 +12,11 @@ export const initSceneBg = (scene: any, width: number, center: number[]) => {
     side: THREE.DoubleSide,
     map: texture.load("/threejs/map/scene-bg2.png"),
     transparent: true,
-    opciaty: 1,
+    opacity: 1,
     depthTest: false, //是否在渲染此材质时启用深度测试。默认为 true
   });
   const plane = new THREE.Mesh(geometry, material);
-  plane.position.set(...center, -0.2 - 0.02);
+  plane.position.set(center[0], center[1], -0.2 - 0.02);
   plane.position.z = -0.3;
   scene.add(plane);
 };
@@ -35,7 +35,7 @@ export const initRotatingAperture = (
     depthTest: true,
   });
   mesh_1 = new THREE.Mesh(plane, material);
-  mesh_1.position.set(...center, 0);
+  mesh_1.position.set(center[0], center[1], 0);
   mesh_1.position.z = -0.2;
   mesh_1.scale.set(1.1, 1.1, 1.1);
   scene.add(mesh_1);
@@ -55,7 +55,7 @@ export const initRotatingPoint = (
     depthTest: true,
   });
   mesh_2 = new THREE.Mesh(plane, material);
-  mesh_2.position.set(...center, -0.3);
+  mesh_2.position.set(center[0], center[1], -0.3);
   mesh_2.scale.set(1.1, 1.1, 1.1);
   mesh_2.position.z = -0.3;
   scene.add(mesh_2);

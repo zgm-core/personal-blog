@@ -48,7 +48,7 @@ export const getAllPoints = (plogin: number[][]) => {
 
   rectPointsArr.forEach((e: number[]) => {
     //判断当前这个点e在没在框线内部，没在的话就不保存
-    if (pointInPolygon(e, plogin)) {
+    if (pointInPolygon(e as [number, number], plogin as [number, number][])) {
       // console.log("pointInPolygon(e, plogin)",pointInPolygon(e, plogin),e);
       interiorPoint.push(e);
     }

@@ -56,7 +56,7 @@ export const buildModel = () => {
   points = curve.getPoints(200);
   const geometry1 = new THREE.BufferGeometry().setFromPoints(points);
 
-  const material1 = new THREE.LineBasicMaterial({ color: 0x006666, size: 5 });
+  const material1 = new THREE.LineBasicMaterial({ color: 0x006666 });
   const curveObject = new THREE.Line(geometry1, material1);
   group.add(curveObject);
 

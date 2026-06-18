@@ -31,7 +31,7 @@ let scene: any,
 // eslint-disable-next-line react-hooks/exhaustive-deps
 const initScene = (
   position: number[] = [0, 0, 800],
-  lookPosition: number[],
+  lookPosition: number[] = [0, 0, 0],
   s: number = 180,
   route?:string
 ) => {
@@ -46,11 +46,11 @@ const initScene = (
   //创建相机对象
   if(route=="/threeDemo25"){
     camera = new THREE.PerspectiveCamera( 45, width / height, 0.1, 1500);
-    camera.position.set(...position); //利用OrbitControls重新设置相机参数 调整视角
+    camera.position.set(position[0], position[1], position[2]); //利用OrbitControls重新设置相机参数 调整视角
     camera.lookAt(lookPosition[0],lookPosition[1],lookPosition[2]);
   }else{
     camera = new THREE.OrthographicCamera(-s * k, s * k, s, -s, 1, 1000);
-    camera.position.set(...position); //利用OrbitControls重新设置相机参数 调整视角
+    camera.position.set(position[0], position[1], position[2]); //利用OrbitControls重新设置相机参数 调整视角
     camera.lookAt(scene.position );
   }
 

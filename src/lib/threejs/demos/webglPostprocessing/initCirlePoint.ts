@@ -22,7 +22,7 @@ export const initCirclePoint = (scene:any, width:number,center:number[]) => {
     depthTest: false,
   });
   let mesh = new THREE.Mesh(plane, material);
-  mesh.position.set(...center, -0.31);
+  mesh.position.set(center[0], center[1], -0.31);
   mesh.position.z=-0.35
   // let mesh2 = mesh.clone()
   // mesh2.position.set(...centerXY, bottomZ - 0.001)

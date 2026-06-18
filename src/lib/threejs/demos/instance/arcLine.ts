@@ -40,10 +40,11 @@ const flyRadianAngle= radianAOB(startPoint,new THREE.Vector3(0,-1,0),flyArcCente
  //调用圆弧线模型的绘制函数
 //  console.log("看看参数",flyArcCenter.x, flyArcCenter.y, flyArcR, startAngle, endAngle);
  
- const arcline = circleLine(flyArcCenter.x, flyArcCenter.y, flyArcR, startAngle, endAngle)
- 
- arcline.center = flyArcCenter;//飞线圆弧自定一个属性表示飞线圆弧的圆心
- arcline.topCoord = arcTopCoord;//飞线圆弧自定一个属性表示飞线圆弧中间也就是顶部坐标
+ const arcline = Object.assign(
+  circleLine(flyArcCenter.x, flyArcCenter.y, flyArcR, startAngle, endAngle),
+  { center: flyArcCenter, topCoord: arcTopCoord }
+ );
+ // center: 飞线圆弧的圆心, topCoord: 飞线圆弧中间也就是顶部坐标
  return arcline
 }
 

@@ -11,7 +11,7 @@ import  pointInPolygon  from 'point-in-polygon';
  * @LastEditTime: 2024-01-25 15:49:10
  */
 
-export const getAllPoint = (polygon: number[]) => {
+export const getAllPoint = (polygon: number[][]) => {
   //目标：利用框线上的点结合第三方插件找出框线内的点阵坐标
   //循环数据，把传过来的数据经纬度分开，分别找出他们的最小最大值，然后得出点阵的取值范围
   const lonArr: number[] = []; //经度数组
@@ -43,7 +43,7 @@ export const getAllPoint = (polygon: number[]) => {
   const interiorPoint:number[][]=[]
 //   console.log('666',polygon);
   rectPointsArr.forEach((item:number[])=>{
-    if(pointInPolygon(item,polygon)){
+    if(pointInPolygon(item as [number, number], polygon as [number, number][])){
         interiorPoint.push(item)
     }
   })

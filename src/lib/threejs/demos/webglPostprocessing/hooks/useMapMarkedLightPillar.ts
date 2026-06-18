@@ -54,7 +54,7 @@ export const useMapMarkedLightPillar = (options?: number) => {
 
     group.add(plane, plane_1, bottomGB, animationGQ);
 
-    group.position.set(coordinates[0], coordinates[1]);
+    group.position.set(coordinates[0], coordinates[1], 0);
     return group;
   };
 
@@ -103,7 +103,7 @@ export const useMapMarkedLightPillar = (options?: number) => {
 
     // 延迟动画的时间
     const delay = random(0, 1000);
-    plane.tween_1 = new TWEEN.Tween({ scale: scale, opacity: 0 })
+    const tween_1 = new TWEEN.Tween({ scale: scale, opacity: 0 })
       .to({ scale: scale * 0.15, opacity: 1 }, 1000)
       .delay(delay)
       .onUpdate((params) => {
@@ -112,7 +112,7 @@ export const useMapMarkedLightPillar = (options?: number) => {
         plane.material.opacity = opacity;
       });
 
-    plane.tween_2 = new TWEEN.Tween({ scale: scale * 1.5, opacity: 1 })
+    const tween_2 = new TWEEN.Tween({ scale: scale * 1.5, opacity: 1 })
       .to({ scale: scale * 2, opacity: 0 }, 1000)
       .onUpdate((params) => {
         let { scale, opacity } = params;
@@ -122,15 +122,15 @@ export const useMapMarkedLightPillar = (options?: number) => {
 
     //使 tweenB 在 tweenA 完成后开始:tweenA.chain(tweenB)
     //创造一个无限的链式，tweenA 完成时开始 tweenB，tweenB 完成时开始 tweenA：tweenA.chain(tweenB),tweenB.chain(tweenA)
-    plane.tween_1.chain(plane.tween_2);
-    plane.tween_2.chain(plane.tween_1);
+    tween_1.chain(tween_2);
+    tween_2.chain(tween_1);
 
     //启动动画
-    plane.tween_1.start();
+    tween_1.start();
 
     //想要成功的完成动画效果，你需要在主函数中(循环渲染函数)调用 TWEEN.update()
 
-    return plane;
+    return Object.assign(plane, { tween_1, tween_2 });
   }
 
   return { createLightPillar };

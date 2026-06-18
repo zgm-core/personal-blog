@@ -16,8 +16,8 @@ import { createCountryMesh } from "./countryMesh";
 import { borderLine } from "./line";
  
 //解析全球国家边界线
-const group = new THREE.Group(); //创建组
-group.meshArr = []; //自顶一个属性包含所有国家mesh，用于鼠标射线拾取
+type CountryMesh = THREE.Mesh & { color?: THREE.Color; gdp?: number }
+const group = Object.assign(new THREE.Group(), { meshArr: [] as CountryMesh[] }); //创建组，自顶一个属性包含所有国家mesh，用于鼠标射线拾取
 const loader = new THREE.FileLoader(); //创建文件加载器
 loader.setResponseType("json"); //设置解析出来的数据格式
  

@@ -21,16 +21,13 @@ export const createMesh = () => {
   apertureMesh = [];
   newsData.forEach((v: any, i: number) => {
     // 圆标记
-    const mesh = createPointTexture(R.R * 1.001, v.E, v.N);
+    const mesh = Object.assign(createPointTexture(R.R * 1.001, v.E, v.N), {
+      name: v.name,      // 新闻发生地点
+      title: v.title,    // 新闻标题
+      herf: v.herf,      // 新闻超链接地址
+    });
     group.add(mesh);
 
-    /**
-     * 给mesh模型添加属性
-     */
-
-    mesh.name = v.name;//mesh对应新闻name属性 表示新闻发生地点
-    mesh.title = v.title;//新闻标题
-    mesh.herf = v.herf;//新闻超链接地址
     chooseMesh.push(mesh);
 
     // 光柱

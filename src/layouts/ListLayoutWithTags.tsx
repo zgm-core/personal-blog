@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import { formatDate } from '@/utils/formatDate'
 import type { Blog } from 'contentlayer/generated'
+import type { CoreContent } from '@/utils/contentlayer'
 import Link from 'next/link'
 import siteMetadata from '@/data/siteMetadata'
 import CategoryNav from '@/components/CategoryNav'
@@ -15,9 +16,9 @@ interface PaginationProps {
   currentPage: number
 }
 interface ListLayoutProps {
-  posts: Blog[]
+  posts: CoreContent<Blog>[]
   title: string
-  initialDisplayPosts?: Blog[]
+  initialDisplayPosts?: CoreContent<Blog>[]
   pagination?: PaginationProps
 }
 
@@ -84,7 +85,7 @@ const accentGradients = [
   'from-rose-400 to-pink-400',
 ]
 
-function matchPost(post: Blog, query: string) {
+function matchPost(post: CoreContent<Blog>, query: string) {
   return (post.title || '').toLowerCase().includes(query.toLowerCase())
 }
 

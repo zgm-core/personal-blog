@@ -7,10 +7,11 @@ import siteMetadata from '@/data/siteMetadata'
 import CategoryNav from '@/components/CategoryNav'
 import ReadButton from '@/components/ReadButton'
 import type { Blog } from 'contentlayer/generated'
+import type { CoreContent } from '@/utils/contentlayer'
 
 interface Props {
-  allPosts: Blog[]
-  initialDisplayPosts: Blog[]
+  allPosts: CoreContent<Blog>[]
+  initialDisplayPosts: CoreContent<Blog>[]
   currentPage: number
   totalPages: number
 }
@@ -24,7 +25,7 @@ const accentGradients = [
   'from-rose-400 to-pink-400',
 ]
 
-function matchPost(post: Blog, query: string) {
+function matchPost(post: CoreContent<Blog>, query: string) {
   return (post.title || '').toLowerCase().includes(query.toLowerCase())
 }
 

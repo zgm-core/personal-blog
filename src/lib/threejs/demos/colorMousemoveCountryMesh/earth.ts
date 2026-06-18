@@ -18,8 +18,8 @@ import { FourPillar } from "./fourWheel";
 import { borderLine } from "./line";
 
 //解析全球国家边界线
-const group = new THREE.Group(); //创建组
-group.meshArr = []; //自顶一个属性包含所有国家mesh，用于鼠标射线拾取
+type CountryMesh = THREE.Mesh & { color?: THREE.Color; gdp?: number }
+const group = Object.assign(new THREE.Group(), { meshArr: [] as CountryMesh[] }); //创建组，自顶一个属性包含所有国家mesh，用于鼠标射线拾取
 const loader = new THREE.FileLoader(); //创建文件加载器
 loader.setResponseType("json"); //设置解析出来的数据格式
 
@@ -48,7 +48,7 @@ export const resolveData = () => {
           //console.log("数据当前格式",e.geometry.coordinates);//是个三维数组
           //拿出数组里面的经纬度数据，转换成球面坐标，进行国家mesh，和国家边界线的生成
           // R * 1.001比地球R稍大，以免深度冲突
-          const mesh = createCountryMesh(R.R * 1.001, e.geometry.coordinates);
+          const mesh = createCountryMesh(R.R * 1.001, e.geometry.coordinates) as CountryMesh;
           const line = borderLine(R.R * 1.002, e.geometry.coordinates);
 
           //把国家mesh和国家边界线mesh放入组里面统一渲染，优化性能
@@ -66,10 +66,10 @@ export const resolveData = () => {
             mesh.gdp = countryGdpColor[mesh.name]["gdp"]; //自定义颜色属性 用于射线拾取HTML标签显示
 
             //柱子相关
-            group.add(FourPillar(2,2,mesh.gdp/100000000000,R.R,capital[ mesh.name][0],capital[ mesh.name][1], mesh.color));
+            group.add(FourPillar(2,2,mesh.gdp!/100000000000,R.R,capital[ mesh.name][0],capital[ mesh.name][1], mesh.color!.getHex()));
           } else {
-            mesh.material.color.set(0x004040);
-            mesh.color = mesh.material.color.clone(); //自定义颜色属性 用于射线拾取交互
+            (mesh.material as THREE.MeshLambertMaterial).color.set(0x004040);
+            mesh.color = (mesh.material as THREE.MeshLambertMaterial).color.clone(); //自定义颜色属性 用于射线拾取交互
           }
         });
       });

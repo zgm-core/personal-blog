@@ -27,7 +27,7 @@ export const useFileLoader = () => {
       });
 
       // 将拿到的数据转换成json
-      data = JSON.parse(data);
+      data = JSON.parse(data as string);
       return data;
 
     } catch (error) {

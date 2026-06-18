@@ -18,7 +18,7 @@ export const createCountryMesh = (R: number, data: [][][]) => {
   const geometryArr:any=[]
   data.forEach((e: number[][]) => {
     // console.log(e);
-    const polygon = e[0]; //获取多边形轮廓数据polygon,polygon是个二维数组
+    const polygon = e[0] as unknown as number[][]; //获取多边形轮廓数据polygon,polygon是个二维数组
  
     //gridPoint(polygon):多边形轮廓polygon内填充等间距点
     //pointsArr表示polygon边界上顶点坐标和polygon内填充的顶点坐标

@@ -40,8 +40,7 @@ const sideMaterial = new THREE.MeshLambertMaterial({
   opacity: 0.9,
 });
 
-const group = new THREE.Group();
-group.meshArr = []; //自定义一个属性包含所有国家mesh，用于鼠标射线拾取
+const group = Object.assign(new THREE.Group(), { meshArr: [] as THREE.Mesh[] }); //自定义一个属性包含所有国家mesh，用于鼠标射线拾取
 export const loaderLine = async () => {
   //调用请求数据的方法
   const { http, progress } = useFileLoader();
@@ -107,12 +106,13 @@ export const loaderLine = async () => {
         const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     
 
-        const mesh = new THREE.Mesh(geometry, [
-          topFaceMaterial.clone(),
-          sideMaterial.clone(),
-        ]);
-        mesh.name = properties["name"];
-        mesh._meshName = "model";
+        const mesh = Object.assign(
+          new THREE.Mesh(geometry, [
+            topFaceMaterial.clone(),
+            sideMaterial.clone(),
+          ]),
+          { name: properties["name"], _meshName: "model" }
+        );
         // mesh.add(lineMesh)
         group.meshArr.push(mesh);
         province.add(mesh);
@@ -137,15 +137,16 @@ export const loaderLine = async () => {
   const { size, center } = box_3d;
   // console.log("000",box_3d);
   const width: number = size.x < size.y ? size.y + 1 : size.x + 1;
-  initSceneBg(scene, width, center);
+  const centerArr = [center.x, center.y];
+  initSceneBg(scene, width, centerArr);
   // 添加背景，修饰元素
-  initRotatingAperture(scene, width, center);
-  initRotatingPoint(scene, width - 2, center);
+  initRotatingAperture(scene, width, centerArr);
+  initRotatingPoint(scene, width - 2, centerArr);
 
   // 粒子
   initParticle(scene, box_3d);
   //点圆圈
-  initCirclePoint(scene, width, center);
+  initCirclePoint(scene, width, centerArr);
 
   return group;
 };
