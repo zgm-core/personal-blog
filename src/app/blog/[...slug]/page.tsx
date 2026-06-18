@@ -20,6 +20,12 @@ const layouts = {
   PostBanner,
 }
 
+export const generateStaticParams = () => {
+  return allBlogs.map((post) => ({
+    slug: post.slug.split('/'),
+  }))
+}
+
 export async function generateMetadata(props: {
   params: Promise<{ slug: string[] }>
 }): Promise<Metadata | undefined> {
