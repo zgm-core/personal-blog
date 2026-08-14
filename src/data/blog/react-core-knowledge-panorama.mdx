@@ -1,0 +1,746 @@
+---
+title: React 核心知识全景：Ref 体系 · 性能优化三部曲 · Context · Render Props 深入解读
+date: '2026-08-14'
+tags: ['React', 'Ref', 'Hooks', 'Context', '组件通信', '性能优化', 'useCallback', 'useMemo', 'Render Props', '前端面试', '组件复用', '前端']
+draft: false
+summary: 一篇打通 React 核心知识体系：从 Ref 的 DOM 操作、forwardRef 转发、useRef / useImperativeHandle，到 memo + useCallback + useMemo 的性能优化闭环，再到 Context 跨层级通信机制、渲染穿透、Redux 关系，最后是 HOC 时代的 Render Props 设计模式与 Custom Hooks 演进。每一部分都附带深度原理、常见踩坑、最佳实践。
+authors: ['sparrowhawk']
+---
+
+React 的核心思想是声明式编程：用 state / props 描述界面，框架负责同步 DOM。但实际开发中总会遇到声明式覆盖不到的角落——需要直接操作 DOM 节点、需要让父组件拿到子组件内部方法、需要跳过层层 props 把数据送到深层组件。
+
+这篇笔记把 React 日常开发绕不开的四块内容串起来：**Ref 体系**、**性能优化三部曲（memo / useCallback / useMemo）**、**Context 跨层级通信**、**Render Props 复用模式**。每一块从「为什么需要它」讲起，到 API 细节、原理、踩过的坑，最后给出真正能落地的写法。
+
+---
+
+## 第一部分 · Ref 体系：DOM 操作、转发与实例暴露
+
+### 🎯 Ref 的适用场景
+
+先泼盆冷水：**能用 state 驱动，就不要碰 Ref**。React 之所以叫声明式框架，就是希望开发者只描述状态、不去管 DOM。下面这些场景声明式确实搞不定，才是 Ref 真正该出场的时候：
+
+- 控制输入框焦点、文本选中、音视频播放/暂停
+- 触发强制 DOM 动画（如非 React 管理的 canvas）
+- 对接第三方原生 DOM 库（图表、富文本、地图）
+
+一句话：Ref 是「逃生舱」，不是日常工具。
+
+---
+
+### 1.1 类组件中的 Ref
+
+#### 字符串 Ref（已废弃，禁止使用）
+
+最早期的写法，ref 传字符串，通过 `this.refs` 取 DOM：
+
+```jsx
+<input ref="inputRef" />
+this.refs.inputRef.focus()
+```
+
+底层设计有缺陷（命名冲突、异步渲染下不可靠），官方已标记过时。新项目直接用 `createRef` 或回调 Ref，不要再用。
+
+#### createRef（React 16.3+ 类组件标准用法）
+
+`React.createRef()` 生成一个 `{ current: null }` 的 ref 对象。挂载到元素后，DOM / 类组件实例会被赋给 `.current`：
+
+```jsx
+constructor() {
+  super()
+  this.inputRef = React.createRef()
+}
+// 获取DOM
+this.inputRef.current.focus()
+```
+
+ref 不仅能绑 DOM，也能绑类组件实例，父组件可以直接调子组件内部方法。**但这是反模式**——一旦父组件直接操作子组件内部，数据流就变成了命令式，React 的单向数据流优势被破坏。只在确有必要的场景用。
+
+> 更早版本支持回调 Ref：ref 传函数，手动保存 DOM 实例。注意**函数组件没有实例**，不能直接给函数组件挂 ref——要拿函数组件内部的东西，必须走 `forwardRef`。
+
+---
+
+### 1.2 Ref 转发 forwardRef
+
+#### 遇到的问题
+
+用 HOC 包装子组件时，父组件传的 ref 会指向**外层包装层**，拿不到内部真实子组件。例如 `withTheme(Child)` 拿到的 ref 是 `withTheme` 返回的包装组件，不是 `Child`。
+
+`React.forwardRef` 的作用：**把 ref 穿透包装层，透传给内部真正的子组件**。
+
+```jsx
+React.forwardRef((props, ref) => {
+  // 拿到父传过来的 ref，手动传给内部子组件
+  return <RealChild ref={ref} {...props} />
+})
+```
+
+- `forwardRef` 接收一个渲染函数，参数是 `(props, ref)`，父组件传来的 ref 在第二参数位置拿到，再手动透传给内部子组件
+- 常见于**高阶组件封装、组件库开发**——antd、Radix 这些库内部大量用 forwardRef
+
+---
+
+### 1.3 函数组件 Ref Hooks
+
+#### useRef
+
+```jsx
+const inputRef = useRef()
+<input ref={inputRef} />
+inputRef.current // 访问 DOM 节点
+```
+
+**useRef vs createRef：**
+
+| API | 使用场景 | 核心特性 |
+|-----|---------|---------|
+| `createRef` | 类组件 | 函数组件里每次渲染都新建一个 ref 对象，存不住状态 |
+| `useRef` | 函数组件 | 组件整个生命周期复用同一个 ref 对象；改 `.current` 不触发重渲染 |
+
+`useRef` 的本质是「**一个不触发渲染的可变容器**」。除了存 DOM，还能放定时器 id、上一次的 props、动画状态——所有那些「需要跨渲染保留但不该触发渲染」的东西，都该塞进 useRef。这是函数组件里替代实例属性的标准手段。
+
+#### useImperativeHandle
+
+> ⚠️ **必须和 `forwardRef` 配合使用**
+
+**解决的问题**：默认情况下 forwardRef 把整个 DOM / 实例原样暴露给父组件，父组件什么都能改，封装形同虚设。`useImperativeHandle` 让你**精确控制对外暴露哪些方法**，内部真实 DOM 藏在子组件里，父组件只能用你开放出来的接口。
+
+**子组件：**
+
+```jsx
+const Child = React.forwardRef((props, ref) => {
+  const innerDom = useRef(null)
+
+  useImperativeHandle(ref, () => {
+    // 返回对象，就是父组件 ref 能访问到的全部内容
+    return {
+      click() {
+        console.log(innerDom.current)
+      }
+    }
+  })
+
+  return <div ref={innerDom}>子组件</div>
+})
+```
+
+**父组件调用：**
+
+```jsx
+const comRef = useRef()
+comRef.current.click()
+```
+
+父组件拿到的 ref 是一个只含 `click` 方法的对象，根本碰不到 innerDom。这就是封装的真正含义——**暴露的是行为契约，不是内部实现**。
+
+---
+---
+
+## 第二部分 · 性能优化三部曲：memo、useCallback、useMemo 深度实战
+
+### 2.0 先厘清概念：「重渲染」≠「真实 DOM 变更」
+
+| 术语 | 发生时机 | 成本 |
+|------|---------|------|
+| **Re-render（重渲染 / 虚拟 DOM 计算）** | 父组件 state / props / context 变化，组件函数重新执行 | 中低开销，纯 JS 算 Diff |
+| **Re-paint（真实 DOM 变更）** | Diff 出差异后浏览器改 DOM 节点 | 高开销，涉及布局、绘制、合成 |
+
+很多人一看到「重渲染」就紧张，其实 React 的 Diff 非常快——一个几十节点的组件重渲染通常在 1ms 内。**真正值得优化的是「组件本身渲染耗时长 + 被频繁触发」的场景**。盲目加 memo / useCallback 反而会增加心智负担和浅比较成本。下面三个 API 是工具，不是银弹。
+
+### 2.1 问题起源：为什么子组件会跟着父组件一起重渲染？
+
+```jsx
+function Parent() {
+  const [count, setCount] = useState(0)
+  return (
+    <div>
+      <button onClick={() => setCount(count + 1)}>点击了 {count} 次</button>
+      <Child />  {/* 👈 count 变化时，Child 也会重渲染 */}
+    </div>
+  )
+}
+
+function Child() {
+  return <p>我是子组件，没有任何 props</p>
+}
+```
+
+**原因**：React 的默认策略是——父组件重渲染，**所有子组件无条件跟着重渲染**，不管 props 变没变。React 不会主动帮你比较子组件 props。这是 React 当年为「简单可预测」付出的代价：默认不做 props 比对，把优化的决定权交给开发者。
+
+---
+
+### 2.2 第一步：React.memo — 给子组件加一层「浅比较守卫」
+
+```jsx
+import { memo } from 'react'
+
+const Child = memo(function Child() {
+  return <p>我是子组件</p>
+})
+```
+
+`memo` 是个高阶组件：父组件重渲染时，React 先用 `Object.is` 对 Child 的**每一个 props 字段**做浅比较，全部相等就跳过 Child 重渲染。本质就是 React 帮你自动写了 `shouldComponentUpdate`。
+
+#### memo 的比较规则：Object.is 浅比较
+
+memo 默认用 `Object.is()` 对 **每一个 props 字段** 做浅比较：
+
+```
+新旧 props 逐一比较：
+  Object.is(oldProps.name, newProps.name)   ✅ 原始类型比较值
+  Object.is(oldProps.user, newProps.user)   ⚠️ 对象/数组/函数比较引用！
+```
+
+| 类型 | 比较方式 |
+|------|---------|
+| 原始类型（string/number/boolean 等） | **按值比较**（内容相等即相等） |
+| object / array / function | **按引用比较**（内存地址相同才相等） |
+
+#### memo 为什么会失效？
+
+这是性能优化里最常见的坑，一定要吃透：
+
+```jsx
+const Child = memo(function Child({ user, onSubmit }) { ... })
+
+function Parent() {
+  const [count, setCount] = useState(0)
+  // ❌ 每次 Parent 渲染，都创建全新的对象和函数
+  const user = { name: '墨痕' }
+  const handleSubmit = () => {}
+
+  return <Child user={user} onSubmit={handleSubmit} />
+  // 浅比较永远不通过，memo 完全失效
+}
+```
+
+对象字面量、数组字面量、箭头函数——**每一次渲染都生成全新引用**，`Object.is` 比较引用必然不相等。memo 摆在那儿也是摆设。这就是为什么需要 `useCallback` 和 `useMemo`：它们的作用不是「优化性能」，而是**把 memo 需要的 props 引用稳定下来**，让 memo 真正生效。
+
+---
+
+### 2.3 第二步：useCallback — 稳定函数引用
+
+`useCallback(fn, deps)` 的作用：**缓存函数引用，只在依赖项变化时才返回新函数**。依赖没变 → 返回的还是上一次那个函数对象 → 传给子组件的 onClick 引用不变 → memo 浅比较通过。
+
+```jsx
+// ❌ 每次 Parent 重渲染都生成新函数 → memo 失效
+const handleSubmit = () => { ... }
+
+// ✅ Parent 重渲染但 deps 没变 → 返回同一个引用 → memo 生效
+const handleSubmit = useCallback(() => {
+  console.log('submit', formData)
+}, [formData])
+```
+
+#### useCallback 必须和 memo 配合使用
+
+这是最容易踩的认知坑：**单独使用 useCallback 没有任何性能收益**，反而多了一次依赖数组比较的开销。
+
+useCallback 只是把函数引用稳住，至于「要不要跳过重渲染」是 memo 的判断。两者必须组合成完整闭环才有意义：
+
+```
+Parent 重渲染
+   │
+   ▼
+useCallback 返回同一个函数引用 ←── 依赖没变
+   │
+   ▼
+memo(Child) 浅比较 props.onClick 引用相等 ✓
+   │
+   ▼
+Child 跳过重渲染
+```
+
+如果 Child 根本没包 memo，useCallback 写得再标准也是白写——Child 本来就会无条件重渲染，根本不关心 props 引用稳不稳定。
+
+#### 依赖项与闭包陷阱
+
+useCallback 第二个参数——依赖数组，规则和 useEffect 完全一致：
+
+- 函数体里用到的所有外部变量，都得在 deps 中声明
+- 漏写就会掉进**闭包陷阱（stale closure）**：函数闭包捕获的是第一次渲染的旧值，后续状态更新它读不到
+
+```jsx
+const [count, setCount] = useState(0)
+// ❌ 依赖漏写：print 永远打印 0
+const print = useCallback(() => console.log(count), [])
+// ✅ 正确
+const print = useCallback(() => console.log(count), [count])
+```
+
+---
+
+### 2.4 第三步：useMemo — 稳定对象引用 / 缓存计算结果
+
+`useMemo(fn, deps)` 承担两个职责：
+
+#### 作用一：缓存昂贵计算值
+
+最干净的用途——计算开销大、且依赖不变时无需重算：
+
+```jsx
+function List({ items, filter }) {
+  // ❌ 任何 state 变化都让 10000 条数据重排 + 过滤
+  const visibleItems = items
+    .filter(item => item.type === filter)
+    .sort((a, b) => a.score - b.score)
+
+  // ✅ 只有 items / filter 变化时才重算
+  const visibleItems = useMemo(() => {
+    return items
+      .filter(item => item.type === filter)
+      .sort((a, b) => a.score - b.score)
+  }, [items, filter])
+}
+```
+
+与 Vue computed 行为很像，但有微妙差异：
+
+| 区别 | useMemo | Vue computed |
+|------|---------|--------------|
+| 触发条件 | 依赖项**引用**变化才重算 | 依赖的响应式属性变化自动重算 |
+| 缓存保证 | React 文档明确写了「可以按需丢弃缓存」 | 100% 缓存保证，依赖不变绝不重算 |
+| 依赖声明 | 手动写数组（容易漏） | 自动追踪依赖 |
+
+#### 作用二：稳定对象 / 数组引用，配合 memo
+
+这是 useMemo 在实战中更常见、但也容易被滥用的用途。子组件 memo 了，但父组件每次渲染都新建一个 config 对象传下去——引用不同，memo 照样失效。用 useMemo 把这个对象引用稳住：
+
+```jsx
+// ❌ 每次 Parent 重渲染创建新对象 → memo 失效
+const config = { disabled: true, theme }
+// ✅ theme 不变 → 返回同一个对象引用 → memo 通过
+const config = useMemo(() => ({
+  disabled: true,
+  theme,
+}), [theme])
+```
+
+> 严格说这不是 useMemo 设计的初衷（缓存计算结果），是社区实践出来的副作用用法。更干净的方式是把对象 props 拆成原始类型分别传（`disabled` + `theme`），让 memo 的浅比较天然生效，避免依赖 useMemo。
+
+#### useMemo vs useCallback：底层是同一个东西
+
+其实把 useCallback 改写成 useMemo 完全等价：
+
+```jsx
+// 两种写法效果完全相同
+const fn1 = useCallback(() => { ... }, [a, b])
+const fn2 = useMemo(() => () => { ... }, [a, b])
+```
+
+useCallback 就是专门用来缓存函数的 useMemo，底层共用同一套缓存逻辑。可以理解成 `useCallback = useMemo(() => fn, deps)` 的语法糖。
+
+---
+
+### 2.5 完整闭环实战
+
+下面是一个真实可落地的例子，把 memo + useCallback + useMemo 三者串成一个完整闭环。场景：商品列表 + 搜索 + 收藏，父组件还有一个无关的 UI 开关。
+
+```jsx
+import { memo, useState, useCallback, useMemo } from 'react'
+
+// 🟢 子组件：加 memo 守卫
+const ProductTable = memo(function ProductTable({
+  products, onToggleLike, keyword,
+}) {
+  return (
+    <ul>
+      {products.map(p => (
+        <li key={p.id}>
+          {p.name} — ￥{p.price}
+          <button onClick={() => onToggleLike(p.id)}>
+            {p.liked ? '❤️' : '🤍'}
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+})
+
+function ShopPage() {
+  const [allProducts] = useState(() => fetchAll())
+  const [keyword, setKeyword] = useState('')
+  const [likedIds, setLikedIds] = useState(() => new Set())
+  const [uiFlag, setUiFlag] = useState(false)
+
+  // 🟢 计算结果 + 数组引用稳定
+  const filteredProducts = useMemo(() => {
+    return allProducts
+      .filter(p => p.name.includes(keyword) || p.desc.includes(keyword))
+      .map(p => ({ ...p, liked: likedIds.has(p.id) }))
+  }, [allProducts, keyword, likedIds])
+
+  // 🟢 函数引用稳定（用函数式 setState，依赖为空）
+  const handleToggleLike = useCallback((pid) => {
+    setLikedIds(prev => {
+      const next = new Set(prev)
+      next.has(pid) ? next.delete(pid) : next.add(pid)
+      return next
+    })
+  }, [])
+
+  // 👉 切换无关的 uiFlag 时：三个 props 引用都不变 → memo 浅比较全通过 → 列表不重渲染
+  return (
+    <div>
+      <input value={keyword} onChange={e => setKeyword(e.target.value)} />
+      <button onClick={() => setUiFlag(!uiFlag)}>切换无关 UI</button>
+      <ProductTable
+        products={filteredProducts}
+        onToggleLike={handleToggleLike}
+        keyword={keyword}
+      />
+    </div>
+  )
+}
+```
+
+---
+
+### 2.6 常见误区与反模式
+
+下面这几个坑，每一个都见过太多人掉进去：
+
+| 反模式 | 为什么是坑 |
+|--------|-----------|
+| 无脑所有组件加 memo、所有函数加 useCallback | 浅比较本身也有成本；依赖数组维护成本激增；漏写一个依赖就是隐藏 bug。**优化收益跑不赢心智负债** |
+| 把 useMemo 当「逻辑保证」使用 | React 文档明确写了：useMemo 只是性能提示，React 可以在内存紧张时丢弃缓存。**业务逻辑不能依赖「缓存一定不丢」**，否则内存压力下会出现诡异 bug |
+| 为了依赖为空，把值藏进 useRef 逃避 exhaustive-deps | 读 ref 的值不参与 React 渲染周期，容易和渲染时的值脱节；数据流变得隐晦，后人维护时根本看不出 ref 是在哪同步的 |
+| 子组件包了 memo，但 children 每次是新元素 | children 也是 props！`<p>hello</p>` 每次渲染都是全新 React Element 对象，引用必然不同，memo 白写 |
+
+#### 决策流程速查
+
+```
+是否先用 Profiler 测出了真实热点？
+  └─ 是 → 子组件耗时大？→ 加 memo
+              └─ memo 不生效？→ 查 props：
+                  ├─ 函数 props？→ 父组件 useCallback
+                  ├─ 对象/数组 props？→ 父组件 useMemo 或拍平
+                  └─ children？→ 父组件缓存 children 引用
+```
+
+---
+---
+
+## 第三部分 · Context：跨层级组件通信完整解读
+
+### 3.1 Context 的产生背景
+
+React 数据流单向自上而下，靠 props 传递。但组件树一深，中间层组件根本不消费这个数据，却被迫一层层转发——这就是臭名昭著的 **props drilling（属性钻取）**：
+
+```jsx
+<App user={user}>
+  <Page user={user}>      {/* Page 压根不需要 user，只是搬运工 */}
+    <Card user={user}>    {/* Card 同样不需要 */}
+      <Header user={user} />
+    </Card>
+  </Page>
+</App>
+```
+
+层级一多，每个中间层都要写转发代码；字段名一改，中间层全跟着改；重构时搬运工们一动不动却要改一遍。Context API 正是为这种场景而生：**上层直接把数据广播给深层后代，跳过中间层**。
+
+> 但别把 Context 当万能状态管理方案。局部数据该用 props 用 props；Context 适合**多组件共享的全局类数据**——主题、登录态、国际化配置这种「全局读、低频写」的数据。
+
+---
+
+### 3.2 五大核心 API
+
+| API | 作用 |
+|-----|------|
+| `React.createContext(defaultValue)` | 创建上下文实例，返回带 Provider / Consumer 的对象 |
+| `Context.Provider` | 生产者组件，向下广播 value |
+| `Context.Consumer` | 消费者组件，以回调函数形式读取上下文 |
+| `static contextType` | 类组件静态属性，消费单个上下文 |
+| `useContext(contextObj)` | Hook，函数组件读取上下文（**推荐**） |
+
+#### createContext
+
+```jsx
+const MyContext = React.createContext(defaultValue)
+MyContext.displayName = "MyContext"  // DevTools 里显示的名字
+```
+
+`defaultValue` **只在整棵树找不到上层 Provider 时才生效**。只要上层存在 Provider，哪怕 value 是 `undefined`，默认值也会被完全忽略——这是很多人踩的第一个坑。
+
+#### Provider
+
+```jsx
+<MyContext.Provider value={data}>
+  {/* 后代组件 */}
+</MyContext.Provider>
+```
+
+- **更新触发规则**：`value` 的**引用**一变，所有消费这个 Context 的后代组件全部重渲染。注意是引用比较，不是深比较——value 内部字段改了但引用没变，消费者不会更新
+- 支持多层嵌套，子组件消费时取**离自己最近一层** Provider 的 value，内层覆盖外层
+
+#### 消费方式对比
+
+| 方式 | 适用 | 能否多 Context |
+|------|------|---------------|
+| `static contextType` | 类组件 | ❌ 一个类只能赋值一次，只能读一个 Context |
+| `<Context.Consumer>` | 类组件 / 函数组件 | ✅ 嵌套写法，但多层嵌套就是 Callback Hell |
+| `useContext(Context)` | 函数组件 | ✅ 多次调用扁平化，**函数组件首选** |
+
+---
+
+### 3.3 更新机制深度解读
+
+#### 更新触发条件：比较引用，不比较内部值
+
+```jsx
+const ctx = { theme: 'light' }
+ctx.theme = 'dark'  // ❌ 直接改字段，引用不变 → 消费者不更新！
+// ✅ 必须替换整个对象，触发引用变化
+setCtx(prev => ({ ...prev, theme: 'dark' }))
+```
+
+这一点和 setState 的不可变更新原则一致：**Context 只认引用，不认内容**。直接 mutate 内部字段，React 根本感知不到变化。
+
+#### 渲染穿透特性：memo 挡不住 Context 更新
+
+即使中间层组件用 `React.memo` 跳过了自身渲染，下层消费 Context 的组件**依然会强制重渲染**。Context 更新通过内部订阅机制传播，绕过了 props 比较这一关：
+
+```
+App (Provider value 变化)
+ └─ Middle (memo + props 不变 → 跳过自身渲染 ✓)
+      └─ Consumer (useContext → 依然强制重渲染 ✓)
+```
+
+这恰恰是 Context 最大的缺陷：**更新粒度太粗**。value 一变，所有 useContext 消费者无差别更新，无法做到「只订阅 value 里的某个字段」。这是原生 Context 不适合放高频变化数据的根本原因。
+
+#### 就近匹配原则
+
+组件向上查找时取**最近一层** Provider 的 value，内层覆盖外层：
+
+```jsx
+<ThemeContext.Provider value={{ theme: 'light' }}>
+  {/* 这里读 light */}
+  <ThemeContext.Provider value={{ theme: 'dark' }}>
+    {/* 这里读 dark（就近匹配覆盖了外层） */}
+  </ThemeContext.Provider>
+</ThemeContext.Provider>
+```
+
+---
+
+### 3.4 常见问题与踩坑
+
+#### 踩坑 1：value 直接写对象字面量
+
+```jsx
+// ❌ 每次 Provider 所在组件渲染都生成新对象 → 引用永远变化 → 所有消费者全重渲染
+<ThemeContext.Provider value={{ theme, setTheme }}>
+```
+
+这是 Context 性能问题最普遍的根源。✅ **保证 value 引用稳定**：类组件把对象放 state 里；函数组件用 `useMemo` 缓存：
+
+```jsx
+const ctxValue = useMemo(() => ({
+  theme,
+  setTheme
+}), [theme, setTheme])
+<ThemeContext.Provider value={ctxValue}>
+```
+
+#### 踩坑 2：默认值不生效
+
+默认值只在**外层完全不存在 Provider** 时生效。调试时发现默认值没被用上，先检查是不是写了 Provider 但 value 传了 `undefined`——这种情况默认值照样被忽略。
+
+#### 踩坑 3：把高频变化的状态塞进 Context
+
+原生 Context 没有字段粒度订阅能力，value 引用一变，**所有消费者全部更新**，哪怕它只用了 value 里某个不变的字段。把鼠标位置、滚动偏移、动画帧这种高频变化的数据塞进 Context，等于每次都让一整片组件重渲染——这种场景该用 ref + 事件订阅，或者直接上状态管理库（zustand / jotai）。
+
+---
+
+### 3.5 多 Context 使用与 React-Redux 的关系
+
+业务复杂时按领域**拆分细粒度 Context**，不要把所有状态塞进一个 Context——一个变全员重渲染：
+
+```jsx
+// 函数组件多次调用 useContext，扁平化无嵌套
+const themeCtx = useContext(ThemeContext)
+const userCtx = useContext(UserContext)
+```
+
+**React-Redux 底层正是基于 Context，但它解决了原生 Context 的性能短板**：
+
+```
+             React-Redux 架构
+                   │
+    ┌──────────────┼──────────────┐
+    ▼              ▼              ▼
+  Context       发布订阅        useSelector
+  传递 store    (store 内部     (按字段精确订阅
+  引用本身      数据变化时       只在订阅字段
+  永不变)       通知订阅者)     变化时更新)
+```
+
+react-redux 的 Provider 把 store **引用**通过 Context 传下去——store 引用永远不变，所以 Context 本身不会因为 store 内部数据变化触发消费者更新。真正的更新机制是 store 内部的发布订阅：`useSelector(selector)` 只订阅自己关心的那一片切片，只有该切片变化时对应组件才更新。这就是 react-redux 相对原生 Context 的核心价值——**把粗粒度更新变成精确订阅**。
+
+---
+
+### 3.6 最佳实践
+
+| ✅ 适合用 Context | ❌ 不适合用 Context |
+|------------------|-------------------|
+| 主题、暗黑模式 | 页面局部状态（props 能搞定的就别上 Context） |
+| 国际化语言配置 | 高频变化数据（鼠标、滚动、动画帧） |
+| 全局登录态、权限 | 复杂异步数据流（用 React Query / SWR） |
+
+**三条编码规范**：
+1. 按业务维度拆分细粒度 Context，一个 Context 只管一类数据
+2. Provider 的 value 用 `useMemo` / `useState` 稳定引用，杜绝字面量
+3. 状态更新逻辑复杂时搭配 `useReducer` 统一管理 dispatch，比多个 setState 更清晰
+
+---
+---
+
+## 第四部分 · Render Props：组件逻辑复用设计模式
+
+### 4.1 Render Props 产生背景
+
+类组件时代，逻辑复用主要靠 HOC，但 HOC 有两个老毛病：
+- 产生额外组件嵌套，组件树层级被撑厚
+- 属性命名冲突，多层包裹时同名 props 互相覆盖，debug 困难
+
+**Render Props** 是另一种复用思路：不靠高阶组件包裹，**通过 props 传一个函数**，把子组件的渲染控制权交给调用方。
+
+> 注意：Render Props **不是 React 内置 API**，是一种设计模式。名字叫「render prop」只是约定，props 字段叫什么都行。
+
+---
+
+### 4.2 基础概念与示例
+
+核心思想：组件的某个 prop 接收一个**函数**，组件内部把状态作为实参传给这个函数，函数返回什么 React 元素由调用方决定。**逻辑封装在公共组件里，UI 完全交给外部定义**。
+
+```jsx
+// 封装鼠标位置追踪
+class Mouse extends Component {
+  state = { x: 0, y: 0 }
+  handleMouseMove = (e) => this.setState({ x: e.clientX, y: e.clientY })
+  render() {
+    return (
+      <div onMouseMove={this.handleMouseMove} style={{ height: '300px' }}>
+        {this.props.render(this.state)}  {/* 把内部 state 传给外部函数 */}
+      </div>
+    )
+  }
+}
+
+// 父组件调用：自由决定渲染 UI
+function App() {
+  return (
+    <Mouse
+      render={({ x, y }) => <div>鼠标位置 x:{x}, y:{y}</div>}
+    />
+  )
+}
+```
+
+也可以把函数作为 `children` 传入——社区更常见的写法：
+
+```jsx
+<Mouse>
+  {({ x, y }) => <div>鼠标位置 x:{x}, y:{y}</div>}
+</Mouse>
+```
+
+> 用 children 作 render prop 时，children 必须是函数，不能是普通 JSX 元素，否则 `props.children(state)` 会直接报错。
+
+---
+
+### 4.3 Render Props 解决的问题 & 注意事项
+
+| 优势 | 说明 |
+|------|------|
+| 逻辑与 UI 分离 | 公共组件封装状态/事件，UI 结构交给使用方自由定义 |
+| 规避 HOC 嵌套地狱 | 不产生额外包装组件，组件树干净 |
+| 避免 props 命名冲突 | 数据通过函数参数显式传递，不存在属性覆盖问题 |
+
+#### 坑：内联函数破坏 PureComponent / memo
+
+```jsx
+// ❌ 每次父组件渲染都生成新函数实例 → Mouse 内部浅比较不通过
+<Mouse render={(pos) => <Comp pos={pos} />} />
+```
+
+如果 `Mouse` 继承了 `PureComponent` 或被 `memo` 包裹，这种行内写法会让浅比较永远失效。✅ 解决：类组件把回调提取为实例方法；函数组件用 `useCallback` 稳定引用。
+
+---
+
+### 4.4 Render Props vs HOC vs Custom Hooks
+
+| 方案 | 形式 | 特点 |
+|------|------|------|
+| **Render Props** | props 传函数 | 无 HOC 嵌套，但多层组合时回调金字塔可读性差；类组件函数组件都能用 |
+| **HOC** | 函数包裹组件 | 产生组件嵌套，容易 props 冲突；类组件友好 |
+| **Custom Hooks** | 函数 Hook | React 16.8+ **首选**；扁平化、零嵌套、组合自由 |
+
+**历史演进**：Hooks 出现之前，Render Props 和 HOC 是逻辑复用的两大手段；Custom Hooks 出来后，大部分场景都不再需要 Render Props / HOC——Hook 把复用逻辑抽成一个普通函数，在组件里直接调用，没有嵌套问题，也没有 props 冲突。
+
+#### 改造示例：鼠标逻辑改为自定义 Hook
+
+同样的鼠标追踪逻辑，用 Hook 重写——没有任何嵌套，调用方像用普通函数一样自由：
+
+```jsx
+function useMouse() {
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const handleMouseMove = (e) => setPos({ x: e.clientX, y: e.clientY })
+  return { pos, bind: { onMouseMove: handleMouseMove } }
+}
+
+// 使用
+function App() {
+  const { pos, bind } = useMouse()
+  return <div {...bind} style={{ height: '300px' }}>x:{pos.x} y:{pos.y}</div>
+}
+```
+
+逻辑和数据流一目了然，没有 props 传递函数、没有组件包裹。这就是 Hooks 时代复用逻辑的标准姿势。
+
+---
+---
+
+## 📝 全文知识总览
+
+把四大模块的核心浓缩成一张速查表：
+
+### ① Ref 体系
+
+| API | 作用 |
+|-----|------|
+| 字符串 ref | ❌ 废弃，别再用了 |
+| `createRef` | 类组件专用，生成 `{ current }` ref 对象 |
+| `forwardRef` | ref 向下透传，解决 HOC 包装后 ref 指向错误的问题 |
+| `useRef` | 函数组件稳定 ref，存 DOM / 定时器 / 临时变量；`.current` 变化不触发重渲染 |
+| `useImperativeHandle` | 搭配 forwardRef，自定义对外暴露的方法集合（而非裸露整个 DOM） |
+
+### ② 性能优化三部曲
+
+| 工具 | 作用 | 配合关系 |
+|------|------|---------|
+| `React.memo` | 子组件 HOC，props 浅比较通过则跳过重渲染 | **起点**：没 memo，useCallback / useMemo 对性能优化无效 |
+| `useCallback` | 稳定函数引用 | **配合 memo**：传函数 props 时用 |
+| `useMemo` | 缓存计算值 / 稳定对象引用 | **配合 memo**：传对象/数组 props 时用；或缓存昂贵计算结果 |
+
+> **核心原则**：先用 Profiler 测出真实热点，再精准优化；不要无脑全局加 memo / 缓存。
+
+### ③ Context 跨层级通信
+
+| 要点 | 内容 |
+|------|------|
+| 解决的问题 | props drilling 属性钻取 |
+| 更新条件 | Provider `value` **引用**变化 → 所有消费者强制重渲染 |
+| 穿透特性 | 更新不受 `React.memo` / `shouldComponentUpdate` 拦截 |
+| 就近匹配 | 消费组件向上取最近一层 Provider 的 value |
+| 原生短板 | 更新粒度粗 → 高频变化状态别放 Context |
+| 与 Redux | react-redux 底层基于 Context，但额外实现**发布订阅 + useSelector 精确订阅**，解决原生 Context 的性能短板 |
+| 踩坑提醒 | Provider value 别直接写对象字面量，要用 `useMemo` 稳定引用 |
+
+### ④ Render Props 复用模式
+
+| 要点 | 内容 |
+|------|------|
+| 本质 | 设计模式（非 API），通过 props 传函数，内部组件把状态当实参暴露 |
+| 优势 | 逻辑 UI 分离，无 HOC 嵌套，无 props 命名冲突 |
+| 坑 | 行内函数会破坏 PureComponent / memo，要提取成实例方法或 useCallback |
+| 定位 | Hooks 时代，**自定义 Hook 是逻辑复用首选**；Render Props / HOC 属于历史遗留方案，新项目优先 Hook |
