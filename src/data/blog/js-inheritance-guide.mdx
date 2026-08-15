@@ -1,0 +1,437 @@
+---
+title: JS 继承四种方式深度解读：从原型链到寄生组合，再到 ES6 class
+date: '2026-08-14'
+tags: ['JavaScript', '原型链', '继承', '前端面试', 'ES6', 'class']
+draft: false
+summary: 从继承的产生背景出发，逐一拆解 JS 四种继承方式的原理、代码实现、优缺点与演进逻辑：原型链继承的引用共享问题、构造函数继承的原型断裂、组合继承的两次调用开销、寄生组合继承如何用 Object.create 精准解决，最后看 ES6 class extends 底层到底做了什么。
+authors: ['sparrowhawk']
+---
+
+## 0. 继承是怎么产生的
+
+提到继承，就得先讲面向对象编程（OOP）。面向对象最早出现在 Java 和 C++ 中，核心思路是把现实世界的事物抽象成**类**，类的内部封装自己的属性和行为。在用类的过程中会遇到一个问题：多个类存在大量重复代码，自己独有的代码只占少量。
+
+为了解决这个问题，就产生了**继承机制**——把多个类里面共有的逻辑提取出来作为一个**父类 / 基类**，子类直接复用父类的属性和行为，自己只需要关注独有的代码即可。
+
+### JS 的特殊之处
+
+JS 的诞生受到了 Java 的启发，但它并没有传统意义上的类。JS 属于**原型式面向对象**，没有 class（ES6 之前），一切基于**原型（prototype）**。
+
+在原型机制上，JS 用以下手段模拟继承：
+
+- `prototype` 原型链
+- `call / apply` 改变 this 指向
+- `Object.create` 创建关联对象
+
+后来 ES6 引入了 `class` 语法糖，用关键字 `extends` 实现继承，写法和 Java 几乎一样。但 **class 只是语法糖**，它的底层依旧是**寄生组合继承**。
+
+本文从最原始的原型链继承开始，一步步推演到寄生组合继承，看清楚每种方式解决了什么、又留下什么问题。
+
+---
+
+## 1. 前置：为什么要用 new 调用函数
+
+在讲继承之前，必须先搞懂一个核心问题：**为什么构造函数一定要用 `new` 来调用？**
+
+```js
+function Animal(name) {
+  // this 指向什么？取决于怎么调用
+  console.log('查看 this 的指向', this)
+
+  this.name = name || '动物'
+  this.sleep = function () {
+    console.log(this.name + '正在睡觉')
+  }
+}
+```
+
+**直接调用** `Animal()` 不走 `new` 操作符，此时 `this` 指向全局对象：
+- 浏览器中指向 `window`
+- Node 中指向 `global`
+- 严格模式下指向 `undefined`
+
+这样就成了给全局对象添加属性和行为，造成**全局污染**。严格模式下连 this 都没有，根本实现不了继承。
+
+**用 `new` 调用** `new Animal(xxx)` 时，`new` 操作符会创建一个空对象，并把 `this` 指向这个新对象。函数执行完毕后，自动把这个对象返回。此时 `this` 上就有了 `name` 属性和 `sleep` 实例方法。
+
+> 一句话：**要实现继承，必须用 `new` 操作符调用构造函数**，因为这样才能让 `this` 指向实例对象，属性和方法才会挂在实例上。
+
+---
+
+## 2. 第一种：原型链继承
+
+### 2.1 构造父类
+
+先构造一个父类 / 基类：
+
+```js
+function Animal(name) {
+  this.arr = ['张三', '李四', '王五']
+
+  // this 指向 Animal 的实例（因为要用 new Animal() 调用）
+  console.log('查看 this 的指向', this)
+
+  // 在实例上挂载 name 属性
+  this.name = name || '动物'
+
+  // 在实例上挂载 sleep 实例方法
+  this.sleep = function () {
+    console.log(this.name + '正在睡觉')
+  }
+}
+
+// 在 Animal 原型上挂载 nickName 属性
+Animal.prototype.nickName = '动物'
+
+// Animal 是函数，函数都有 prototype 属性（原型）
+// 这个属性会初始化一个空对象，空对象里有个 constructor 属性指向函数本身
+// 给 Animal 原型上添加 eat 方法
+Animal.prototype.eat = function (food) {
+  console.log(this.name + '正在吃' + food)
+}
+```
+
+### 2.2 实现子类继承
+
+```js
+// 创建子类，子类有自己独有的属性和行为
+function Dog() {
+  this.like = '吃骨头'
+}
+
+// 👇 核心：修改子类原型指向，让子类的原型对象 = 父类的实例对象
+// 这样子类的原型对象里面就会有父类的属性和行为
+// 子类找不到某个属性/方法时，就会沿着原型链去构成它的原型对象（父类实例）上查找
+Dog.prototype = new Animal()
+
+// 在 Dog 的原型上挂载 name 属性
+Dog.prototype.name = '狗'
+```
+
+### 2.3 测试
+
+```js
+const dog = new Dog()   // 实例 1
+const dog1 = new Dog()  // 实例 2
+
+console.log(dog.name)            // 狗
+console.log(dog.eat('骨头'))      // 狗正在吃骨头
+console.log(dog.sleep())         // 狗正在睡觉
+console.log(dog instanceof Animal)  // true
+console.log(dog instanceof Dog)     // true
+console.log(dog1.nickName)       // 动物（来自原型链）
+```
+
+### 2.4 致命缺陷：引用类型属性被所有实例共享
+
+```js
+dog1.arr.push('赵六')
+console.log(dog.arr)   // ['张三', '李四', '王五', '赵六']  ← dog 也变了！
+console.log(dog1.arr)  // ['张三', '李四', '王五', '赵六']
+```
+
+`arr` 是数组（引用类型），存在父类实例上，而所有子类实例共享同一个父类实例作为原型。**一个实例改了引用类型的值，所有实例访问到的都跟着变**。
+
+### 2.5 总结
+
+| 优点 | 缺点 |
+|------|------|
+| 实现简单，子类能继承父类实例属性 + 原型属性 | 引用类型属性被所有子类实例共享，一个改全部变 |
+| | 创建子类实例时，无法向父类构造函数传参 |
+
+---
+
+## 3. 第二种：构造函数继承（借用构造函数）
+
+### 3.1 原理
+
+为了解决原型链继承的「引用共享」问题，引入了构造函数继承。核心思路：**在子类中调用父类构造函数，用 `call` 改变 `this` 指向**。
+
+```js
+function Cat(name) {
+  // 调用父类方法，改变 this 指向
+  // 此时 this 指向 Cat 的实例对象
+  // 相当于把父类函数内部的属性和方法复制一份给子类实例
+  Animal.call(this)
+  this.name = name || 'Tom'
+}
+```
+
+`Animal.call(this)` 执行时，`this` 是 Cat 内部的，指向 `new Cat()` 创建的实例。Animal 函数体内的 `this.xxx = ...` 全部挂到了 Cat 实例上——每个实例都有自己独立的一份。
+
+### 3.2 测试
+
+```js
+const cat1 = new Cat()
+const cat2 = new Cat()
+
+cat1.arr.push('田七')
+console.log(cat1.arr)  // ['张三', '李四', '王五', '田七']
+console.log(cat2.arr)  // ['张三', '李四', '王五']  ← cat2 没受影响！
+
+console.log(cat1 instanceof Animal)  // false ← 无法访问父类原型
+console.log(cat2 instanceof Cat)     // true
+console.log(cat1.nickName)           // undefined ← 拿不到原型上的属性
+```
+
+### 3.3 总结
+
+| 优点 | 缺点 |
+|------|------|
+| 解决了引用类型属性共享的问题，每个实例独立 | 子类**无法继承父类原型上的属性和方法** |
+| 创建子类实例时可以向父类传参 | `instanceof` 检测不出子类和父类的关系 |
+
+构造函数继承解决了原型链继承的缺点，但又产生了新问题：子类访问不到父类原型对象。于是引入了**组合继承**。
+
+---
+
+## 4. 第三种：组合继承
+
+### 4.1 原理
+
+组合继承 = 原型链继承 + 构造函数继承，两者组合，取长补短：
+
+```js
+function Chicken(name) {
+  // 1. 构造函数继承：把父类实例属性复制一份到自己身上（解决引用共享）
+  Animal.call(this)
+  this.name = name || 'Tom'
+}
+
+// 2. 原型链继承：让子类原型指向父类实例（继承父类原型上的属性和方法）
+Chicken.prototype = new Animal()
+```
+
+### 4.2 测试
+
+```js
+const chicken1 = new Chicken()
+const chicken2 = new Chicken()
+
+chicken1.arr.push('田七')
+console.log(chicken1.arr)  // ['张三', '李四', '王五', '田七']
+console.log(chicken2.arr)  // ['张三', '李四', '王五']  ← 实例属性独立
+
+console.log(chicken1 instanceof Animal)   // true
+console.log(chicken2 instanceof Chicken)  // true
+console.log(chicken1.nickName)            // 动物 ← 原型上的属性也能拿到
+```
+
+引用类型独立了，原型上的属性和方法也能继承了，看似完美。
+
+### 4.3 缺点：父类构造函数被调用了两次
+
+仔细看组合继承的代码，`Animal` 被调用了**两次**：
+
+1. `Animal.call(this)` —— 在子类构造函数内部调用一次，把实例属性复制给子类实例
+2. `new Animal()` —— 在设置子类原型时调用一次，父类实例属性被挂到子类原型上
+
+第二次调用是多余的——子类实例已经通过 `call` 拥有了父类的实例属性，原型上再放一份完全冗余。而且第二次调用执行了父类构造函数的全部逻辑，浪费性能。
+
+### 4.4 总结
+
+| 优点 | 缺点 |
+|------|------|
+| 解决了引用类型共享问题 | **父类构造函数被调用了两次**，产生性能开销 |
+| 子类能继承父类原型上的属性和方法 | 子类原型上冗余了一份父类实例属性 |
+
+---
+
+## 5. 第四种：寄生组合继承（最终方案）
+
+### 5.1 原理
+
+寄生组合继承在组合继承的基础上，**用 `Object.create` 替代 `new Animal()`**，避免第二次调用父类构造函数：
+
+```js
+function Pig(name) {
+  // 1. 构造函数继承：复制父类实例属性
+  Animal.call(this)
+  this.name = name || 'Tom'
+}
+
+// 2. 创建一个空对象，这个空对象的原型 = Animal.prototype
+//    子类原型指向这个空对象 → 子类原型最终关联到父类原型
+//    不会执行 Animal 构造函数！避免了第二次调用
+Pig.prototype = Object.create(Animal.prototype)
+
+// 3. 修正 constructor 指向
+//    Object.create 后 Pig.prototype.constructor 指向的是 Animal
+//    明明是 new Pig() 创建的实例，constructor 却指向父类，信息错乱
+Pig.prototype.constructor = Pig
+```
+
+### 5.2 为什么 Object.create 能避免第二次调用
+
+`Object.create(proto)` 创建一个新对象，新对象的原型指向 `proto`。它**不会执行构造函数**，只是建立原型关联。对比：
+
+| 写法 | 是否调用 Animal 构造函数 | 结果 |
+|------|------------------------|------|
+| `Child.prototype = new Animal()` | ✅ 调用（多余开销） | 子类原型上有父类实例属性（冗余） |
+| `Child.prototype = Object.create(Animal.prototype)` | ❌ 不调用 | 子类原型只关联父类原型，干净 |
+
+### 5.3 测试
+
+```js
+const pig1 = new Pig()
+const pig2 = new Pig()
+
+pig1.arr.push('田七')
+console.log(pig1.arr)  // ['张三', '李四', '王五', '田七']
+console.log(pig2.arr)  // ['张三', '李四', '王五']  ← 实例属性独立
+
+console.log(pig1 instanceof Animal)  // true
+console.log(pig2 instanceof Pig)     // true
+console.log(pig1.nickName)           // 动物 ← 原型上的属性能拿到
+```
+
+### 5.4 一个容易踩的坑：子类方法添加顺序
+
+```js
+function Pig(name) {
+  Animal.call(this)
+  this.name = name || 'Tom'
+}
+
+// ❌ 在覆盖原型之前添加子类方法
+Pig.prototype.PigFun = function () {
+  console.log('我是猪的实例方法')
+}
+
+// 这一步直接把 Pig.prototype 替换成了新对象
+// 之前挂上去的 PigFun 丢了！
+Pig.prototype = Object.create(Animal.prototype)
+Pig.prototype.constructor = Pig
+
+const pig = new Pig()
+pig.PigFun()  // TypeError: pig.PigFun is not a function
+```
+
+**原因**：`Pig.prototype = Object.create(...)` 是把 `Pig.prototype` 整个替换成一个新对象，之前在旧 prototype 上挂的方法全丢了。
+
+✅ **正确写法：先覆盖原型，再添加子类方法**：
+
+```js
+function Pig(name) {
+  Animal.call(this)
+  this.name = name || 'Tom'
+}
+
+// 1. 先覆盖原型
+Pig.prototype = Object.create(Animal.prototype)
+Pig.prototype.constructor = Pig
+
+// 2. 再添加子类自己的方法
+Pig.prototype.PigFun = function () {
+  console.log('我是猪的实例方法')
+}
+
+const pig = new Pig()
+pig.PigFun()  // 我是猪的实例方法 ✅
+```
+
+### 5.5 总结
+
+| 优点 | 缺点 |
+|------|------|
+| 只调用一次父类构造函数，无冗余 | 写法相对复杂 |
+| 实例属性独立，不共享 | — |
+| 子类能继承父类原型上的属性和方法 | — |
+| `instanceof` 正常工作 | — |
+
+**寄生组合继承是 ES6 之前最完善的继承方案。**
+
+---
+
+## 6. ES6 class extends：语法糖的真相
+
+ES6 引入了 `class` 和 `extends`，写法变得非常简洁：
+
+```js
+class Animal {
+  constructor(name) {
+    this.arr = ['张三', '李四', '王五']
+    this.name = name || '动物'
+  }
+
+  sleep() {
+    console.log(this.name + '正在睡觉')
+  }
+
+  eat(food) {
+    console.log(this.name + '正在吃' + food)
+  }
+
+  // 静态方法
+  static create(name) {
+    return new Animal(name)
+  }
+}
+
+class Dog extends Animal {
+  constructor(name) {
+    super(name)  // 等价于 Animal.call(this, name)
+    this.like = '吃骨头'
+  }
+
+  bark() {
+    console.log('汪汪')
+  }
+}
+
+const dog = new Dog('狗')
+dog.sleep()      // 狗正在睡觉
+dog.eat('骨头')   // 狗正在吃骨头
+dog.bark()       // 汪汪
+console.log(dog instanceof Animal)  // true
+```
+
+### class 的本质
+
+`class` 只是语法糖，底层实现依然是**寄生组合继承**。对照关系：
+
+| ES6 写法 | ES5 等价操作 |
+|----------|-------------|
+| `constructor` | 构造函数本身 |
+| `super(name)` | `Animal.call(this, name)` |
+| `extends Animal` | `Child.prototype = Object.create(Animal.prototype)` + 修正 constructor |
+| 类上的方法（非 static） | 挂在 `prototype` 上 |
+| `static` 方法 | 挂在构造函数本身上 |
+
+> babel 把 `class extends` 编译成 ES5 后，核心就是 `Object.create` + `call` 的寄生组合继承。
+
+---
+
+## 7. 四种继承方式对比总览
+
+| 继承方式 | 核心写法 | 优点 | 缺点 |
+|----------|---------|------|------|
+| **原型链继承** | `Child.prototype = new Parent()` | 简单，能继承实例 + 原型属性 | 引用类型共享；无法传参 |
+| **构造函数继承** | `Parent.call(this)` | 引用类型独立；可传参 | 无法继承原型上的属性方法 |
+| **组合继承** | `call(this)` + `prototype = new Parent()` | 两者优点都有 | 父类构造函数调用了两次 |
+| **寄生组合继承** | `call(this)` + `Object.create(Parent.prototype)` | 完美方案，只调一次 | 写法稍复杂 |
+| **ES6 class extends** | `class Child extends Parent { super() }` | 语法简洁，可读性好 | 本质是语法糖，底层同寄生组合 |
+
+### 演进逻辑
+
+```
+原型链继承
+  │
+  │ 缺陷：引用类型共享
+  ▼
+构造函数继承
+  │
+  │ 缺陷：拿不到原型上的属性方法
+  ▼
+组合继承（原型链 + 构造函数）
+  │
+  │ 缺陷：父类构造函数调了两次
+  ▼
+寄生组合继承（Object.create 替代 new）
+  │
+  │ 底层不变，语法简化
+  ▼
+ES6 class extends
+```
+
+每一步都在解决上一步的问题，最终寄生组合继承成为 ES5 时代的最优解，ES6 class 只是把它包装成了更优雅的语法。
