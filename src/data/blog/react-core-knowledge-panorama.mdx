@@ -4,7 +4,7 @@ date: '2026-08-14'
 tags: ['React', 'Ref', 'Hooks', 'Context', '组件通信', '性能优化', 'useCallback', 'useMemo', 'Render Props', '前端面试', '组件复用', '前端']
 draft: false
 summary: 一篇打通 React 核心知识体系：从 Ref 的 DOM 操作、forwardRef 转发、useRef / useImperativeHandle，到 memo + useCallback + useMemo 的性能优化闭环，再到 Context 跨层级通信机制、渲染穿透、Redux 关系，最后是 HOC 时代的 Render Props 设计模式与 Custom Hooks 演进。每一部分都附带深度原理、常见踩坑、最佳实践。
-authors: ['sparrowhawk']
+authors: ['default']
 ---
 
 React 的核心思想是声明式编程：用 state / props 描述界面，框架负责同步 DOM。但实际开发中总会遇到声明式覆盖不到的角落——需要直接操作 DOM 节点、需要让父组件拿到子组件内部方法、需要跳过层层 props 把数据送到深层组件。
