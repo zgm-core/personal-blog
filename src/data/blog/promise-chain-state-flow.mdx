@@ -17,7 +17,7 @@ authors: ['default']
 
 ## 一、Promise A+ 规范出现的背景
 
-在该规范出来之前，前端为了处理异步场景，用了各种回调函数，方式不一样，各式各样，五花八门（回调嵌套、事件监听、发布订阅……什么都有）。这个时候（大概是 2012 年）Promise A+ 规范横空出世。
+在该规范出来之前，前端为了处理异步场景，用了各种回调函数，方式不一样，各式各样，五花八门（回调嵌套、事件监听、发布订阅……什么都有）。Promise A+ 规范 2012 年开始制定，2014 年发布 1.0 版本，横空出世。
 
 他是 Promise A 规范的升级版，**早于 ES6**。他统一规范了异步场景处理的方式。他不是一门技术，而更像是一篇论文，他规定了异步场景统一该怎么处理。就像是工地上的监工一样，他只是规定小工该怎么处理异步场景，并没有强制要求——但各大浏览器厂商、Node.js、各家 Promise 库（Q、when、bluebird、JQuery 的 Promise）都愿意按他说的来。后来 ES6 在制定 Promise 标准时，就**参考了该规范**，所以 ES6 的 `Promise` 是该规范的一种官方实现。
 
@@ -118,7 +118,7 @@ pro.then(undefined, onRejected);
 
 上一个任务状态是 `fulfilled`，下一个任务就用 `.then` 处理；如果是 `rejected`，就用 `.catch` 处理。当然也可以用 `.then` 里的两个回调函数——默认第一个处理成功，第二个处理失败。
 
-不过 `.then(onFulfilled, onRejected)` 的第二个参数和 `.catch(onRejected)` 看起来类似，但有区别：**`catch` 能捕获到 `onFulfilled` 内部抛的错，而 `then` 的第二个参数不能**（因为他俩处于同一层）。
+不过 `.then(onFulfilled, onRejected)` 的第二个参数和 `.catch(onRejected)` 看起来类似，但有区别：**`catch` 能捕获到 `onFulfilled` 内部抛的错，而 `then` 的第二个参数不能**（因为 `then` 的第二个参数处理的是父 promise 的 rejection，`onFulfilled` 内部抛的错属于新 promise 的 rejection，要让下一层才能捕获）。
 
 ---
 
@@ -537,11 +537,12 @@ console.log(pro1, pro2, pro3, pro4);
 ### 陷阱 1：`return new Error(...)` 不是抛错
 
 ```js
-.then(() => { return new Error('bad'); })   // → fulfilled with Error 对象
-.then(() => { throw new Error('bad'); })    // → rejected with Error 对象
+Promise.resolve()
+  .then(() => { return new Error('bad'); })   // → fulfilled with Error 对象
+  .then(() => { throw new Error('bad'); })    // → rejected with Error 对象
 ```
 
-Error 对象**不是 thenable**，决议程序走"普通值"分支，新 promise 会被 fulfilled。这是案例 3 的核心考点。
+Error 对象**不是 thenable**，决议程序走"普通值"分支，新 promise 会被 fulfilled。这是 3.js 的核心考点。
 
 ### 陷阱 2：`throw` 后的 `return` 永远不会执行
 
@@ -552,7 +553,7 @@ Error 对象**不是 thenable**，决议程序走"普通值"分支，新 promise
 })
 ```
 
-这是案例 9 中 `pro3` 的关键。
+这是 9.js 中 `pro3` 的关键。
 
 ### 陷阱 3：catch 不是"错误被吃掉了"，而是"恢复点"
 
@@ -574,16 +575,16 @@ catch 后续的链路状态取决于 catch 回调的返回值：
 
 ```js
 Promise.reject(1)
-  .then(onFulfilled1)            // onFulfilled1 被跳过
-  .then(onFulfilled2)            // onFulfilled2 被跳过
-  .catch(onRejected)             // 在这里被捕获
+  .then(() => { /* onFulfilled1 */ })   // 被跳过
+  .then(() => { /* onFulfilled2 */ })   // 被跳过
+  .catch((err) => { /* 在这里被捕获 */ })
 ```
 
 这就是为什么"在链尾统一 catch 错误"是可行的——中间环没传 onRejected 时，rejection 自动透传。
 
 ### 陷阱 6：同步 console.log 一个 promise 看到的可能是 pending
 
-由于 then/catch 回调是**微任务**，同步代码里打印 promise 时，回调还没执行，promise 还是 pending。这一点在案例 5 / 6 / 7 / 9 中都有体现。
+由于 then/catch 回调是**微任务**，同步代码里打印 promise 时，回调还没执行，promise 还是 pending。这一点在 5.js / 6.js / 7.js / 9.js 中都有体现。
 
 ### 陷阱 7：状态不是由"executor 执行成功与否"决定的
 
