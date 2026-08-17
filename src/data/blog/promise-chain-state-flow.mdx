@@ -1,0 +1,637 @@
+---
+title: 大白话 Promise A+ 规范与链式调用状态流转：从规范到 9 个经典案例
+date: '2026-08-15'
+tags: ['JavaScript', 'Promise', '异步', '前端面试', 'Promise A+']
+draft: false
+summary: 用大白话讲透 Promise A+ 规范和链式调用里的状态/数据流转。规范背景 → 三态 → then/catch → 决议程序 → 9 个经典案例完整源码配状态对照表 → 9 大陷阱总结 → 速查表。读完不用看外部文件也能搞懂。
+authors: ['default']
+---
+
+## 前言
+
+本文用大白话讲清楚 Promise A+ 规范和链式调用里状态/数据是怎么流转的，配套代码案例完整贴在第五节（每个文件都附了完整源码 + 状态对照表 + 输出结果），读完不用看外部文件也能搞懂。
+
+规范术语参考另一篇：[Promise A+ 规范翻译与解读](/blog/promise-aplus-spec)。
+
+---
+
+## 一、Promise A+ 规范出现的背景
+
+在该规范出来之前，前端为了处理异步场景，用了各种回调函数，方式不一样，各式各样，五花八门（回调嵌套、事件监听、发布订阅……什么都有）。这个时候（大概是 2012 年）Promise A+ 规范横空出世。
+
+他是 Promise A 规范的升级版，**早于 ES6**。他统一规范了异步场景处理的方式。他不是一门技术，而更像是一篇论文，他规定了异步场景统一该怎么处理。就像是工地上的监工一样，他只是规定小工该怎么处理异步场景，并没有强制要求——但各大浏览器厂商、Node.js、各家 Promise 库（Q、when、bluebird、JQuery 的 Promise）都愿意按他说的来。后来 ES6 在制定 Promise 标准时，就**参考了该规范**，所以 ES6 的 `Promise` 是该规范的一种官方实现。
+
+### 1.1 他怎么规定处理异步场景的？
+
+他规定：**每一个异步任务就是一个 promise 对象，这个对象应该带一个 `then` 方法**。整个 promise 有三个状态，分别是 `pending`、`fulfilled`、`rejected`。任何时候这个 promise 异步任务一定是处于三个状态中的某一个。
+
+这里要注意，规范原文说得更宽：Promise 必须是一个**对象或函数**，且必须提供满足要求的 `then` 方法。也就是说，**规范并没有要求 Promise 必须通过 `new Promise(...)` 构造得到**——只要带合规 `then` 的对象/函数都算规范意义上的 Promise。ES6 只是选择了用构造函数 + executor 这种方式来实现而已：
+
+```js
+// 以下都是规范意义上的 Promise
+const p1 = { then(onFulfilled, onRejected) { /* ... */ } };
+const p2 = function () {};
+p2.then = function (onFulfilled, onRejected) { /* ... */ };
+```
+
+也正是因为 ES6 Promise 遵循该规范，他**可以和其他任何遵循 A+ 规范的 Promise 互操作**，比如和 JQuery 的 Promise 互相 then，完全没问题。
+
+### 1.2 状态怎么变化？
+
+当异步任务 promise 位于 `pending` 状态的时候，他可以通过给他传的回调函数中的 `resolve`、`reject` 方法参数，随时把这个 promise 异步任务的状态改为 `fulfilled` 或 `rejected`。
+
+并且这个过程不可逆，也就是说只要变成了 `fulfilled` 或 `rejected` 状态，就不能再变回 `pending` 状态，也不能互相转换。除非你重新执行一次异步任务（也就是新建一个 Promise 实例，原 promise 不能复活）。
+
+fulfilled 必须拥有一个**值**（表示任务完成的数据），rejected 必须拥有一个**原因**（表示失败的原因）。这俩都**可以是任何 JS 数据，包括 `undefined`**，并且一旦确定下来不可更改。
+
+这里有个容易混淆的点：**规范并没有强制要求状态叫什么名字**。规范文档里用 `pending`/`fulfilled`/`rejected` 只是为了说明规范，具体实现可以自己起名字。**ES6 的 Promise 内部用 `pending`/`resolved`/`rejected` 三种名称**（即用 `resolved` 替代 `fulfilled`），这没有打破 Promise A+ 规范，两者含义完全一致。所以看到 Node 控制台打印 `<Promise> resolved` 不要以为是另一种状态，他就是规范里的 `fulfilled`。
+
+还有一点：**规范也不要求 Promise 对外暴露状态**。ES6 内部有 `[[PromiseStatus]]` 和 `[[PromiseValue]]` 两个属性表示状态和值，但都是**内部属性，外部无法直接访问**（控制台能看到只是调试便利，不是规范要求）。
+
+### 1.3 状态只能由 resolve/reject/throw 改变
+
+**注意**：状态不是由 executor 函数"执行成功/失败"决定的。executor 跑完没调用 `resolve`/`reject`、也没抛错 → promise 永远停留在 `pending`：
+
+```js
+const p = new Promise((resolve, reject) => {
+  console.log('我执行成功了，但没调 resolve/reject');
+});
+// p 永远是 pending，卡住！
+```
+
+状态只能由这三种方式触发：
+
+1. 显式调用 `resolve(value)` → `fulfilled`
+2. 显式调用 `reject(reason)` → `rejected`
+3. 在 executor 中 `throw` → `rejected`
+
+如果既 `resolve` 又 `reject`，**先执行的那个生效，后一个被静默忽略**。
+
+---
+
+## 二、then / catch 是对上一个任务的再处理
+
+一个 promise 异步任务：
+
+```js
+const pro = new Promise((resolve, reject) => { /* ... */ });
+```
+
+不管执行成功还是失败，他总会返回一个结果。这个结果可以通过 `pro.then((data)=>{}, (error)=>{})` 方法获取到成功的数据或失败的原因。
+
+`then` 接收两个回调：**第一个处理成功，第二个处理失败**。通过这两个函数获取成功的数据或失败的原因。
+
+可以这样理解：**`then` 是对上一个 pro（上一个 promise 异步任务）的再处理**。这个 `then` 自己也是一个 promise 异步任务（永远返回一个全新的 promise）。比如：
+
+```js
+const pro1 = new Promise((resolve, reject) => {
+    throw new Error(1);
+})
+const pro2 = pro1.then((res) => {
+    console.log(res);
+    return new Error('2');
+})
+const pro3 = pro2.catch((err) => {
+    throw err;
+    return 3;
+})
+```
+
+等号右边（`pro1.then(...)`）就是一个新的 promise 异步任务。有时候也用链式调用 `.then().then().catch()` 这种写法。
+
+规范里还有两条规则值得提一下：
+
+- 规范 2.2.6 规定**可以多次对同一个 promise 调用 `then`**，注册多个回调。任务完成/失败时按注册顺序依次调用。每个 `then` 各自返回独立的新 promise，彼此不影响。
+- 规范 2.2.4 规定 `onFulfilled` 和 `onRejected` **必须等到当前执行栈清空后才能被调用**（即异步执行）。ES6 用**微任务队列（microtask queue）**实现。这就是为什么 5~9.js 里同步 `console.log` promise 时显示 `pending`——回调还没轮到执行。
+
+### 2.1 catch 的本质
+
+要明确一点：**Promise A+ 规范并没有规定 `catch` 方法**——`catch` 是 ES6 为了使用方便额外提供的便利方法。这不破坏规范，因为规范只规定"至少要有什么"，不限制"多了什么"。
+
+在 ES6 里，`catch(onRejected)` 就是 `then(undefined, onRejected)` 的语法糖，两者完全等价：
+
+```js
+pro.catch(onRejected);
+// 等价于
+pro.then(undefined, onRejected);
+```
+
+上一个任务状态是 `fulfilled`，下一个任务就用 `.then` 处理；如果是 `rejected`，就用 `.catch` 处理。当然也可以用 `.then` 里的两个回调函数——默认第一个处理成功，第二个处理失败。
+
+不过 `.then(onFulfilled, onRejected)` 的第二个参数和 `.catch(onRejected)` 看起来类似，但有区别：**`catch` 能捕获到 `onFulfilled` 内部抛的错，而 `then` 的第二个参数不能**（因为他俩处于同一层）。
+
+---
+
+## 三、链式调用里状态和数据怎么决定
+
+### 3.1 不带 then/catch 的情况
+
+如果一个 promise 不带 `then`/`catch`（也就是初始那个 `new Promise(...)`），他的状态就由 executor 里的执行情况决定。
+
+精确一点，不能简单说"回调执行成功就是 fulfilled，执行失败就是 rejected"——**状态只能由 executor 里显式调用 `resolve`/`reject` 或抛错来改变**。
+
+`new Promise((resolve, reject) => {})` 里的 `(resolve, reject) => {}` 就是 executor。他里面的代码：
+
+- 调用 `resolve(x)` → 状态 `fulfilled`，值 `x`
+- 调用 `reject(e)` 或 `throw e` → 状态 `rejected`，原因 `e`
+- 啥都没做 → 永远 `pending`
+- 既 `resolve` 又 `reject` → 先执行的那个生效，后一个被静默忽略
+
+### 3.2 带 then/catch 的情况
+
+如果带有 `then` 或 `catch`，他的状态和数据就和上一个 promise 异步任务的状态和数据相关。
+
+**情况 1：上一个 promise 还在 `pending`**
+
+如果上一个任务的 executor 里没执行 `resolve`/`reject`（或者异步还没回来），那么上一个 promise 的状态就是 `pending`。当前 `.then`/`.catch` 也跟着 `pending`，要等上一个决议后才能决定自己。
+
+**情况 2：上一个 promise 是 `fulfilled`**
+
+- 用 `.then` 处理 → `.then` 的 `onFulfilled` 回调会被调用。新 promise 的状态和数据取决于回调执行情况：
+  - 回调 `return x`（普通值）→ 新 promise `fulfilled`，值 `x`
+  - 回调 `return x`（x 是 Promise 或 thenable）→ 新 promise **跟随 x**
+  - 回调 `throw e` → 新 promise `rejected`，原因 `e`
+  - 回调没 return → 新 promise `fulfilled`，值 `undefined`
+- 用 `.catch` 处理 → catch 的回调**被跳过**（不执行），新 promise 沿用上一个的 `fulfilled` 状态和值（**值穿透**）。比如：
+  ```js
+  const pro1 = new Promise((resolve, reject) => { resolve(1); });
+  const pro2 = pro1.catch((res) => { return 2; });
+  // pro2 和 pro1 状态一样、值一样，都是 fulfilled / 1
+  ```
+
+**情况 3：上一个 promise 是 `rejected`**
+
+- 用 `.then` 处理 → `.then` 的 `onFulfilled` 被跳过（catch 等价于 `then(undefined, ...)`，`undefined` 不是函数 → 触发穿透）。新 promise 沿用上一个的 `rejected` 状态和原因（**rejection 穿透**）。
+- 用 `.catch` 处理 → catch 的 `onRejected` 回调会被调用。新 promise 的状态由回调执行情况决定（同情况 2 的 4 条规则）。
+
+### 3.3 关于"接收到的数据"
+
+当前 `.then`/`.catch` 回调接收到的数据，就是上一个任务通过 `resolve`/`reject` 传进来的参数：
+
+- 上一个执行 `resolve(x)`，下一个 `.then` 的 `onFulfilled` 收到 `x`
+- 上一个执行 `reject(e)`，下一个 `.catch` 的 `onRejected` 收到 `e`
+- `resolve`/`reject` 没传参数，回调收到的就是 `undefined`
+
+执行 `resolve(x)`/`reject(e)` 相当于执行"返回数据操作"，当前 promise 的数据也就是这俩回调函数的参数。
+
+### 3.4 一句话总结
+
+**`.then`/`.catch` 是对上一个任务的再处理。** 上一个是 `fulfilled`，下一个用 `.then` 处理；如果是 `rejected`，下一个用 `.catch` 处理。当然也可以用 `.then` 里的两个回调函数处理。
+
+---
+
+## 四、状态与数据的完整规则（规范 2.2.7 + 2.3）
+
+把上面说的整理成表格。设父 promise 是 `P`，调用 `P.then(onFulfilled, onRejected)` 得到新 promise `P'`。
+
+### 4.1 `P'` 的状态/值怎么决定？
+
+| `P` 的状态 | 哪个回调被调用 | `P'` 的状态与值 |
+|-----------|---------------|----------------|
+| `pending` | 都不调用（等待） | `P'` 也是 `pending`，等 `P` 决议后再决定 |
+| `fulfilled` | `onFulfilled(value)` 被调用，`onRejected` 被跳过 | 见 4.2 |
+| `rejected` | `onRejected(reason)` 被调用，`onFulfilled` 被跳过 | 见 4.2 |
+
+### 4.2 回调执行后，`P'` 的状态/值怎么决定？
+
+设被调用的回调是 `handler`：
+
+| `handler` 的行为 | `P'` 的状态 | `P'` 的值/原因 |
+|-----------------|------------|---------------|
+| `return x`（x 是普通值，非 thenable） | `fulfilled` | `x` |
+| `return x`（x 是 Promise / thenable） | **跟随 x** | 等 x 决议后采用 x 的状态和值 |
+| `throw e` | `rejected` | `e` |
+| 无 return（或 `return undefined`） | `fulfilled` | `undefined` |
+| `handler` 不是函数（任何非函数值，包括 `null`/`undefined`/数字/对象等） | **沿用 P 的状态与值/原因**（穿透） | 同 P |
+
+#### 穿透规则（规范 2.2.7.3 / 2.2.7.4）
+
+- 如果 `onFulfilled` 不是函数，则 `P'` 以 `P` 的 **value** 被 `fulfilled`。
+- 如果 `onRejected` 不是函数，则 `P'` 以 `P` 的 **reason** 被 `rejected`。
+
+这就是为什么 `pro1.then(...).then(...)` 中间某一环没传回调，错误也能一路"穿透"到最后。也是 `catch`（即 `then(undefined, onRejected)`）在父 fulfilled 时会"原样传递值"的原因。
+
+### 4.3 决议程序 `[[Resolve]](promise, x)`（规范 2.3）
+
+当回调 `return x` 时，并不是简单地把 x 当作值。规范 2.3 规定了一个概念上的操作流程 **`[[Resolve]](promise, x)`**（又称决议程序），按以下顺序进行：
+
+1. **如果 `promise` 和 `x` 是同一个对象** → 把 `promise` 设为 `rejected`，原因为 TypeError（防止循环引用）
+2. **如果 `x` 是一个 Promise**：
+   - `x` 处于 `pending` → `promise` 也必须保持 `pending`，直到 `x` 完成/失败
+   - `x` `fulfilled` → `promise` 也 `fulfilled`，值与 `x` 一致（即"跟随"）
+   - `x` `rejected` → `promise` 也 `rejected`，原因与 `x` 一致
+3. **如果 `x` 是一个对象或函数**：
+   - 读取 `x.then`，如果读取抛错 → 直接让 `promise` `rejected`，原因为抛出的错误
+   - 如果 `x.then` 是函数 → 调用 `x.then(onFulfilled, onRejected)`，递归处理（`onFulfilled` 得到 `y` 时执行 `[[Resolve]](promise, y)`）
+   - 如果 `x.then` 不是函数 → 把 `promise` 设为 `fulfilled`，值为 `x`
+4. **如果 `x` 不是对象也不是函数**（即普通值）→ 把 `promise` 设为 `fulfilled`，值为 `x`
+
+规范原文里 `x` 可以是**任何 JS 数据**（包括 `undefined`、`null`、Promise、thenable、普通值）。Error 对象虽然有属性，但他**不是 thenable**（没有 `then` 方法），所以走第 3 条的"`x.then` 不是函数"分支：当作普通值，新 promise 被 `fulfilled`，值是 Error 对象本身。
+
+**这就是为什么 `return new Error('2')` 不会让 promise 变 `rejected`！** 很多初学者以为 `return new Error(...)` 等同于抛错——**完全相反**——他是返回了一个"正常值"，新 promise 会是 `fulfilled`。要 `rejected`，必须 `throw new Error(...)`。
+
+### 4.4 throw 后的 return 永远不可达
+
+```js
+.catch((err) => {
+  throw err;     // 函数到此终止
+  return 3;      // 不可达！永远不会执行
+})
+```
+
+`throw` 语句会**立即终止函数**并抛出，之后的 `return` 是**不可达代码（unreachable）**，永远不会执行。判断新 promise 的 reason 时，要看实际抛出的值，而不是 throw 后面那一行。
+
+---
+
+## 五、1~9.js 完整源码 + Promise 状态/数据对照表
+
+下面把 1~9.js 每个文件的**完整源码**都贴出来，配状态对照表和输出结果。看完这一节，前面讲的规则就能全对上号。
+
+### 1.js（基础链式 + catch 跳过 + 值穿透）
+
+```js
+new Promise((resolve, reject) => {
+    resolve(1);
+})
+    .then((res) => {
+        console.log(res);
+        return 2;
+    })
+    .catch((err) => {
+        return 3;
+    })
+    .then((res) => {
+        console.log(res);
+    });
+```
+
+**状态对照表：**
+
+| Promise | 状态 | 数据 | 原因 |
+|---------|------|------|------|
+| 初始 `new Promise` | `fulfilled` | `1` | executor 同步调用 `resolve(1)` |
+| `.then(res => { console.log(res); return 2; })` | `fulfilled` | `2` | 回调 `return 2`（普通值）→ fulfilled |
+| `.catch(err => { return 3; })` | `fulfilled` | `2` | 父 fulfilled → catch 被跳过，**值穿透**（沿用父值 2） |
+| `.then(res => { console.log(res); })` | `fulfilled` | `undefined` | 回调无 return → fulfilled with undefined |
+
+**输出：** `1` `2`
+
+### 2.js（同 1.js 结构，独立变量接住最终 promise）
+
+```js
+const pro = new Promise((resolve, reject) => {
+  resolve(1);
+})
+  .then((res) => {
+    console.log(res);
+    return 2;
+  })
+  .catch((err) => {
+    return 3;
+  })
+  .then((res) => {
+    console.log(res);
+  });
+
+setTimeout(() => {
+  console.log(pro);
+}, 1000);
+```
+
+**状态对照表：**
+
+| Promise | 状态 | 数据 | 原因 |
+|---------|------|------|------|
+| 初始 | `fulfilled` | `1` | `resolve(1)` |
+| `.then(res => { return 2; })` | `fulfilled` | `2` | `return 2` |
+| `.catch(err => { return 3; })` | `fulfilled` | `2` | 父 fulfilled → catch 跳过，值穿透 |
+| `.then(res => { console.log(res); })`（即 `pro`） | `fulfilled` | `undefined` | 无 return |
+
+**输出：** `1` `2`，1s 后打印最终 promise（`fulfilled` / `undefined`）
+
+### 3.js（陷阱题：return new Error ≠ throw）
+
+```js
+new Promise((resolve, reject) => {
+    resolve(1);
+})
+    .then((res) => {
+        console.log(res);
+        return new Error('2');
+    })
+    .catch((err) => {
+        throw err;
+        return 3;
+    })
+    .then((res) => {
+        console.log(res);
+    });
+```
+
+**状态对照表：**
+
+| Promise | 状态 | 数据 | 原因 |
+|---------|------|------|------|
+| 初始 | `fulfilled` | `1` | `resolve(1)` |
+| `.then(res => { console.log(res); return new Error('2'); })` | `fulfilled` | `Error('2')` 对象 | `return Error` 是返回普通值（Error 不是 thenable），见 4.3 |
+| `.catch(err => { throw err; return 3; })` | `fulfilled` | `Error('2')` | 父 fulfilled → catch 跳过，值穿透 |
+| `.then(res => { console.log(res); })` | `fulfilled` | `undefined` | 无 return |
+
+**输出：** `1` 然后 `Error: 2`（Node 打印 Error 对象的格式）
+
+### 4.js（then 回调抛错 → rejected，catch 恢复）
+
+```js
+new Promise((resolve, reject) => {
+  resolve();
+})
+  .then((res) => {
+    console.log(res.toString()); // 报错
+    return 2;
+  })
+  .catch((err) => {
+    return 3;
+  })
+  .then((res) => {
+    console.log(res);
+  });
+```
+
+**状态对照表：**
+
+| Promise | 状态 | 数据 | 原因 |
+|---------|------|------|------|
+| 初始 | `fulfilled` | `undefined` | `resolve()` 无参 |
+| `.then(res => { console.log(res.toString()); return 2; })` | `rejected` | `TypeError`（Cannot read properties of undefined） | `res` 是 `undefined`，`undefined.toString()` 抛 TypeError |
+| `.catch(err => { return 3; })` | `fulfilled` | `3` | 父 rejected → catch 被调用，`return 3` → fulfilled |
+| `.then(res => { console.log(res); })` | `fulfilled` | `undefined` | 无 return |
+
+**输出：** `3`（`.then` 回调里 `res.toString()` 一执行就抛 TypeError，第一行 `console.log` 不会打印；错误被 catch 捕获，最终 `.then` 的 `console.log(res)` 打印 `3`）
+
+### 5.js（异步 reject + catch 恢复）
+
+```js
+const promise1 = new Promise((resolve, reject) => {
+  setTimeout(() => {
+    reject();
+  }, 1000);
+});
+const promise2 = promise1.catch(() => {
+  return 2;
+});
+
+console.log('promise1', promise1);
+console.log('promise2', promise2);
+
+setTimeout(() => {
+  console.log('promise1', promise1);
+  console.log('promise2', promise2);
+}, 2000);
+```
+
+**状态对照表：**
+
+| Promise | 同步时 | 1s 后（最终） | 原因 |
+|---------|--------|--------------|------|
+| `promise1` | `pending` | `rejected` / `undefined` | setTimeout 1s 后调用 `reject()` 无参 |
+| `promise2` | `pending` | `fulfilled` / `2` | 父 rejected → catch 被调用，`return 2` → fulfilled（错误被"恢复"为成功） |
+
+**同步输出：** 两个都 `pending`
+**2s 后输出：** `promise1` rejected(undefined)，`promise2` fulfilled(2)
+
+### 6.js（异步 resolve + 多层 then，回调没 return）
+
+```js
+const pro1 = new Promise((resolve, reject) => {
+  setTimeout(() => {
+    resolve(1);
+  }, 1000);
+});
+
+const pro2 = pro1.then((data) => {
+  console.log(data);
+  return data + 1;
+});
+
+const pro3 = pro2.then((data) => {
+  console.log(data);
+});
+
+console.log(pro1, pro2, pro3);
+
+setTimeout(() => {
+  console.log(pro1, pro2, pro3);
+}, 2000);
+```
+
+**状态对照表：**
+
+| Promise | 同步时 | 最终 | 原因 |
+|---------|--------|------|------|
+| `pro1` | `pending` | `fulfilled` / `1` | setTimeout 1s 后 `resolve(1)` |
+| `pro2` | `pending` | `fulfilled` / `2` | 回调 `return 1+1 = 2` |
+| `pro3` | `pending` | `fulfilled` / `undefined` | 回调**没有 return** → fulfilled with undefined |
+
+**同步输出：** 三个都 `pending`
+**2s 后输出：** `1` `2`（控制台还会打印两次 promise 对象，最终状态如上表）
+
+### 7.js（then 回调 throw → rejected，rejection 穿透）
+
+```js
+const pro1 = new Promise((resolve, reject) => {
+    setTimeout(() => {
+        resolve(1);
+    }, 1000);
+})
+const pro2 = pro1.then((data) => {
+    throw 3;
+    return data + 1;
+})
+const pro3 = pro2.then((data) => {
+    console.log(data);
+});
+console.log(pro1,pro2,pro3)
+
+setTimeout(() => {
+    console.log(pro1,pro2,pro3)
+}, 2000);
+```
+
+**状态对照表：**
+
+| Promise | 同步时 | 最终 | 原因 |
+|---------|--------|------|------|
+| `pro1` | `pending` | `fulfilled` / `1` | 1s 后 `resolve(1)` |
+| `pro2` | `pending` | `rejected` / `3` | 回调 `throw 3`（`return data + 1` 不可达），新 promise rejected with 3 |
+| `pro3` | `pending` | `rejected` / `3` | 父 rejected，`onFulfilled` 被跳过 → **rejection 穿透**，沿用 reason 3 |
+
+**同步输出：** 三个都 `pending`
+**2s 后输出：** 无打印（pro3 的回调因父 rejected 不执行）
+
+### 8.js（与 4.js 一致，只是去掉了注释）
+
+```js
+new Promise((resolve, reject) => {
+  resolve();
+})
+  .then((res) => {
+    console.log(res.toString());
+    return 2;
+  })
+  .catch((err) => {
+    return 3;
+  })
+  .then((res) => {
+    console.log(res);
+  });
+```
+
+**状态对照表：** 与 4.js 完全一致，只是 `console.log(res.toString())` 那行没有 `// 报错` 注释。
+
+**输出：** `3`
+
+### 9.js（同步抛错 + rejection 穿透 + throw 不可达）
+
+```js
+const pro1 = new Promise((resolve, reject) => {
+    throw new Error(1);
+})
+const pro2 = pro1.then((res) => {
+    console.log(res);
+    return new Error('2');
+})
+const pro3 = pro2.catch((err) => {
+    throw err;
+    return 3;
+})
+const pro4 = pro3.then((res) => {
+    console.log(res);
+});
+console.log(pro1, pro2, pro3, pro4);
+```
+
+**同步时（console.log 那一刻）：**
+
+| Promise | 状态 | 数据 | 原因 |
+|---------|------|------|------|
+| `pro1` | `rejected` | `Error(1)` | executor **同步**抛错，立即 rejected |
+| `pro2` | `pending` | — | then 回调是微任务，尚未执行 |
+| `pro3` | `pending` | — | 依赖 pro2 |
+| `pro4` | `pending` | — | 依赖 pro3 |
+
+**微任务执行完后的最终状态：**
+
+| Promise | 状态 | 数据 | 原因 |
+|---------|------|------|------|
+| `pro1` | `rejected` | `Error(1)` | executor `throw new Error(1)` |
+| `pro2` | `rejected` | `Error(1)` | 父 rejected → `onFulfilled` 被跳过 → **rejection 穿透**，沿用 Error(1) |
+| `pro3` | `rejected` | `Error(1)` | 父 rejected → catch 被调用，回调内 `throw err`（`return 3` 不可达）→ rejected with err=Error(1) |
+| `pro4` | `rejected` | `Error(1)` | 父 rejected → `onFulfilled` 被跳过 → **rejection 穿透**，沿用 Error(1) |
+
+**关键点：** `pro3` 的 catch 回调里 `throw err; return 3;`，`throw` 让 `return 3` 不可达，所以 `pro3` rejected 的 reason 是 `err`（即 `Error(1)`），而不是 3。后续 `pro4` 因父 rejected 而 rejection 穿透，reason 同样是 `Error(1)`。
+
+---
+
+## 六、常见误区与陷阱总结
+
+### 陷阱 1：`return new Error(...)` 不是抛错
+
+```js
+.then(() => { return new Error('bad'); })   // → fulfilled with Error 对象
+.then(() => { throw new Error('bad'); })    // → rejected with Error 对象
+```
+
+Error 对象**不是 thenable**，决议程序走"普通值"分支，新 promise 会被 fulfilled。这是案例 3 的核心考点。
+
+### 陷阱 2：`throw` 后的 `return` 永远不会执行
+
+```js
+.catch((err) => {
+  throw err;     // 函数到此终止
+  return 3;      // 不可达！永远不会执行
+})
+```
+
+这是案例 9 中 `pro3` 的关键。
+
+### 陷阱 3：catch 不是"错误被吃掉了"，而是"恢复点"
+
+catch 后续的链路状态取决于 catch 回调的返回值：
+
+- `return x` → 新 promise **fulfilled** with x（错误被"恢复"为成功）
+- `throw e` → 新 promise **rejected** with e（错误继续向下传）
+- 无 return → 新 promise **fulfilled** with undefined
+
+### 陷阱 4：then 回调没 return，新 promise 是 fulfilled(undefined)，不是 pending
+
+```js
+.then(data => { console.log(data); })  // 新 promise = fulfilled(undefined)
+```
+
+很多初学者以为"没 return 就是没结果"，其实**只要回调被调用且没抛错**，新 promise 就一定是 fulfilled，值是 `undefined`。
+
+### 陷阱 5：then 链中 rejected 状态会"穿透"到第一个有 onRejected 的地方
+
+```js
+Promise.reject(1)
+  .then(onFulfilled1)            // onFulfilled1 被跳过
+  .then(onFulfilled2)            // onFulfilled2 被跳过
+  .catch(onRejected)             // 在这里被捕获
+```
+
+这就是为什么"在链尾统一 catch 错误"是可行的——中间环没传 onRejected 时，rejection 自动透传。
+
+### 陷阱 6：同步 console.log 一个 promise 看到的可能是 pending
+
+由于 then/catch 回调是**微任务**，同步代码里打印 promise 时，回调还没执行，promise 还是 pending。这一点在案例 5 / 6 / 7 / 9 中都有体现。
+
+### 陷阱 7：状态不是由"executor 执行成功与否"决定的
+
+executor 函数"执行成功"不等于 promise 变成 `fulfilled`。**promise 的状态只能由 `resolve`/`reject` 的显式调用（或 executor 抛错）来改变**。executor 跑完不调任何方法 → 永远 pending。
+
+### 陷阱 8：`fulfilled` 和 `resolved` 命名混淆
+
+不同资料里你会看到两种写法：
+
+| Promise A+ 规范 | ES6 内部实现 | 含义 |
+|----------------|-------------|------|
+| `pending` | `pending` | 进行中 |
+| `fulfilled` | `resolved` | 已完成 |
+| `rejected` | `rejected` | 已失败 |
+
+他们是**同一种状态的不同命名**，规范没有强制名称。看到 Node 控制台打印 `<Promise> resolved` 不要误以为是另一种状态——他就是规范里的 `fulfilled`。
+
+### 陷阱 9：`catch` 不是规范规定的方法
+
+`catch` 是 **ES6 额外提供的便利方法**，Promise A+ 规范并未要求。他只是 `then(undefined, onRejected)` 的语法糖。如果用第三方遵循 A+ 规范但没实现 `catch` 的 Promise 库，可以用 `then(undefined, onRejected)` 处理失败，效果完全等价。
+
+---
+
+## 七、总结速查表
+
+| 关键结论 | 一句话 |
+|---------|--------|
+| Promise 三态 | pending / fulfilled / rejected，不可逆 |
+| ES6 内部状态名 | pending / resolved / rejected（与规范一一对应）|
+| 状态值/原因 | 可以是任何 JS 数据，包括 `undefined` |
+| Promise 的定义 | 任何带合规 `then` 方法的对象或函数 |
+| Promise A+ 不强制命名 | 规范用 fulfilled，ES6 用 resolved，含义一致 |
+| Promise A+ 不要求 `catch` | `catch` 是 ES6 额外提供的便利方法 |
+| Promise A+ 不要求 `new` | ES6 才用构造函数 + executor 实现 |
+| then 必返回新 promise | 链式调用的根基 |
+| then 回调必须异步执行 | 规范 2.2.4，ES6 用微任务实现 |
+| 同一 promise 可多次 then | 规范 2.2.6，按注册顺序依次调用 |
+| 回调 return 普通值 x | 新 promise fulfilled with x |
+| 回调 return thenable / Promise | 新 promise **跟随**它（决议程序第 2/3 条）|
+| 回调 throw e | 新 promise rejected with e |
+| 回调无 return | 新 promise fulfilled with undefined |
+| 回调不是函数 | 状态/值**穿透**沿用父 promise |
+| catch | 等价于 `then(undefined, onRejected)` |
+| 父 fulfilled → catch 跳过 | 新 promise 沿用父 fulfilled 值 |
+| 父 rejected → catch 调用 | 新 promise 由 catch 回调决定 |
+| return new Error ≠ throw | Error 不是 thenable，是普通返回值 |
+| throw 后的 return | 不可达，永远不执行 |
+| 状态只能由 resolve/reject/throw 改变 | executor 跑完不调任何方法 → 永远 pending |
+| ES6 Promise 互操作 | 可与 JQuery/Q/bluebird 等任何 A+ 实现互操作 |
+
+记住这套规则，1~9.js 所有变体都能秒解。
